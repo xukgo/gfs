@@ -1,0 +1,6 @@
+.idea/*
+conf/
+data/
+files/
+log/
+go_build_fileserver_go
