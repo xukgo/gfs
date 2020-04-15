@@ -1,4 +1,4 @@
-package core
+package constDefine
 
 //fireware base last commit:12447a80de9c797e8a62f79dcbabbbbc3dd30337
 

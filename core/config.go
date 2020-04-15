@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	log "github.com/sjqzhang/seelog"
+	"github.com/xukgo/gfs/constDefine"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -31,11 +32,11 @@ func init() {
 			DOCKER_DIR = DOCKER_DIR + "/"
 		}
 	}
-	STORE_DIR = DOCKER_DIR + STORE_DIR_NAME
-	CONF_DIR = DOCKER_DIR + CONF_DIR_NAME
-	DATA_DIR = DOCKER_DIR + DATA_DIR_NAME
-	LOG_DIR = DOCKER_DIR + LOG_DIR_NAME
-	STATIC_DIR = DOCKER_DIR + STATIC_DIR_NAME
+	STORE_DIR = DOCKER_DIR + constDefine.STORE_DIR_NAME
+	CONF_DIR = DOCKER_DIR + constDefine.CONF_DIR_NAME
+	DATA_DIR = DOCKER_DIR + constDefine.DATA_DIR_NAME
+	LOG_DIR = DOCKER_DIR + constDefine.LOG_DIR_NAME
+	STATIC_DIR = DOCKER_DIR + constDefine.STATIC_DIR_NAME
 	LARGE_DIR_NAME = "haystack"
 	LARGE_DIR = STORE_DIR + "/haystack"
 	CONST_LEVELDB_FILE_NAME = DATA_DIR + "/fileserver.db"
@@ -46,8 +47,8 @@ func init() {
 	CONST_SERVER_KEY_FILE_NAME = CONF_DIR + "/server.key"
 	CONST_SEARCH_FILE_NAME = DATA_DIR + "/search.txt"
 	FOLDERS = []string{DATA_DIR, STORE_DIR, CONF_DIR, STATIC_DIR}
-	logAccessConfigStr = strings.Replace(LOG_ACCESS_CONF_TEMPLATE, "{DOCKER_DIR}", DOCKER_DIR, -1)
-	logConfigStr = strings.Replace(LOG_CONF_TEMPLATE, "{DOCKER_DIR}", DOCKER_DIR, -1)
+	logAccessConfigStr = strings.Replace(constDefine.LOG_ACCESS_CONF_TEMPLATE, "{DOCKER_DIR}", DOCKER_DIR, -1)
+	logConfigStr = strings.Replace(constDefine.LOG_CONF_TEMPLATE, "{DOCKER_DIR}", DOCKER_DIR, -1)
 	for _, folder := range FOLDERS {
 		os.MkdirAll(folder, 0775)
 	}
@@ -60,7 +61,7 @@ func init() {
 			ip = Singleton.util.GetPulicIP()
 		}
 		peer := "http://" + ip + ":8080"
-		cfg := fmt.Sprintf(CONF_JSON_TEMPLATE, peerId, peer, peer)
+		cfg := fmt.Sprintf(constDefine.CONF_JSON_TEMPLATE, peerId, peer, peer)
 		Singleton.util.WriteFile(CONST_CONF_FILE_NAME, cfg)
 	}
 	if logger, err := log.LoggerFromConfigAsBytes([]byte(logConfigStr)); err != nil {
@@ -76,7 +77,7 @@ func init() {
 	}
 	ParseConfig(CONST_CONF_FILE_NAME)
 	if Config().QueueSize == 0 {
-		Config().QueueSize = CONST_QUEUE_SIZE
+		Config().QueueSize = constDefine.CONST_QUEUE_SIZE
 	}
 	if Config().PeerId == "" {
 		Config().PeerId = peerId
