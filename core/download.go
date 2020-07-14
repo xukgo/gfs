@@ -153,3 +153,32 @@ func (this *Server) DownloadFromPeer(peer string, fileInfo *FileInfo) {
 		this.SaveFileMd5Log(fileInfo, constDefine.CONST_FILE_Md5_FILE_NAME)
 	}
 }
+
+func (this *Server) CheckFileExistByInfo(md5s string, fileInfo *FileInfo) bool {
+	var (
+		err      error
+		fullpath string
+		fi       os.FileInfo
+		info     *FileInfo
+	)
+	if fileInfo == nil {
+		return false
+	}
+	if fileInfo.OffSet >= 0 {
+		//small file
+		if info, err = this.GetFileInfoFromLevelDB(fileInfo.Md5); err == nil && info.Md5 == fileInfo.Md5 {
+			return true
+		} else {
+			return false
+		}
+	}
+	fullpath = this.GetFilePathByInfo(fileInfo, true)
+	if fi, err = os.Stat(fullpath); err != nil {
+		return false
+	}
+	if fi.Size() == fileInfo.Size {
+		return true
+	} else {
+		return false
+	}
+}
