@@ -8,10 +8,11 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"github.com/xukgo/gfs/constDefine"
+	"github.com/xukgo/gfs/model"
 	"runtime/debug"
 )
 
-func (this *Server) SaveFileInfoToLevelDB(key string, fileInfo *FileInfo, db *leveldb.DB) (*FileInfo, error) {
+func (this *Server) SaveFileInfoToLevelDB(key string, fileInfo *model.FileInfo, db *leveldb.DB) (*model.FileInfo, error) {
 	var (
 		err  error
 		data []byte
@@ -52,7 +53,7 @@ func (this *Server) LoadFileInfoByDate(date string, filename string) (mapset.Set
 	keyPrefix = fmt.Sprintf(keyPrefix, date, filename)
 	iter := Singleton.logDB.NewIterator(util.BytesPrefix([]byte(keyPrefix)), nil)
 	for iter.Next() {
-		var fileInfo FileInfo
+		var fileInfo model.FileInfo
 		if err = json.Unmarshal(iter.Value(), &fileInfo); err != nil {
 			continue
 		}

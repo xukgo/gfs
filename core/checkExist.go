@@ -2,6 +2,7 @@ package core
 
 import (
 	log "github.com/sjqzhang/seelog"
+	"github.com/xukgo/gfs/model"
 	"net/http"
 	"os"
 	"path"
@@ -12,7 +13,7 @@ func (this *Server) CheckFileExist(w http.ResponseWriter, r *http.Request) {
 	var (
 		data     []byte
 		err      error
-		fileInfo *FileInfo
+		fileInfo *model.FileInfo
 		fpath    string
 		fi       os.FileInfo
 	)
@@ -55,7 +56,7 @@ func (this *Server) CheckFileExist(w http.ResponseWriter, r *http.Request) {
 				//		log.Error(err)
 				//	}
 				//}
-				fileInfo = &FileInfo{
+				fileInfo = &model.FileInfo{
 					Path:      path.Dir(fpath),
 					Name:      path.Base(fpath),
 					Size:      fi.Size(),
@@ -70,7 +71,7 @@ func (this *Server) CheckFileExist(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	data, _ = json.Marshal(FileInfo{})
+	data, _ = json.Marshal(model.FileInfo{})
 	w.Write(data)
 	return
 }
@@ -78,10 +79,10 @@ func (this *Server) CheckFilesExist(w http.ResponseWriter, r *http.Request) {
 	var (
 		data      []byte
 		err       error
-		fileInfo  *FileInfo
-		fileInfos []*FileInfo
+		fileInfo  *model.FileInfo
+		fileInfos []*model.FileInfo
 		fpath     string
-		result    JsonResult
+		result    model.JsonResult
 	)
 	r.ParseForm()
 	md5sum := ""

@@ -6,6 +6,7 @@ import (
 	mapset "github.com/deckarep/golang-set"
 	log "github.com/sjqzhang/seelog"
 	"github.com/xukgo/gfs/constDefine"
+	"github.com/xukgo/gfs/model"
 	"runtime/debug"
 	"time"
 )
@@ -20,7 +21,7 @@ func (this *Server) AutoRepair(forceRepair bool) {
 	defer this.lockMap.UnLockKey("AutoRepair")
 	AutoRepairFunc := func(forceRepair bool) {
 		var (
-			dateStats []StatDateFileInfo
+			dateStats []model.StatDateFileInfo
 			err       error
 			countKey  string
 			md5s      string
@@ -28,7 +29,7 @@ func (this *Server) AutoRepair(forceRepair bool) {
 			remoteSet mapset.Set
 			allSet    mapset.Set
 			tmpSet    mapset.Set
-			fileInfo  *FileInfo
+			fileInfo  *model.FileInfo
 		)
 		defer func() {
 			if re := recover(); re != nil {
@@ -38,7 +39,7 @@ func (this *Server) AutoRepair(forceRepair bool) {
 				log.Error(string(buffer))
 			}
 		}()
-		Update := func(peer string, dateStat StatDateFileInfo) {
+		Update := func(peer string, dateStat model.StatDateFileInfo) {
 			//从远端拉数据过来
 			req := httplib.Get(fmt.Sprintf("%s%s?date=%s&force=%s", peer, this.getRequestURI("sync"), dateStat.Date, "1"))
 			req.SetTimeout(time.Second*5, time.Second*5)

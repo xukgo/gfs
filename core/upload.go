@@ -1,9 +1,11 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	log "github.com/sjqzhang/seelog"
 	"github.com/xukgo/gfs/constDefine"
+	"github.com/xukgo/gfs/model"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -19,8 +21,8 @@ func (this *Server) ConsumerUpload() {
 	ConsumerFunc := func() {
 		for {
 			wr := <-this.queueUpload
-			this.upload(*wr.w, wr.r)
-			this.rtMap.AddCountInt64(CONST_UPLOAD_COUNTER_KEY, wr.r.ContentLength)
+			this.upload(*wr.W, wr.R)
+			this.rtMap.AddCountInt64(CONST_UPLOAD_COUNTER_KEY, wr.R.ContentLength)
 			if v, ok := this.rtMap.GetValue(CONST_UPLOAD_COUNTER_KEY); ok {
 				if v.(int64) > 1*1024*1024*1024 {
 					var _v int64
@@ -28,7 +30,7 @@ func (this *Server) ConsumerUpload() {
 					debug.FreeOSMemory()
 				}
 			}
-			wr.done <- true
+			wr.Done <- true
 		}
 	}
 	for i := 0; i < Config().UploadWorker; i++ {
@@ -42,13 +44,13 @@ func (this *Server) upload(w http.ResponseWriter, r *http.Request) {
 		//		pathname     string
 		md5sum       string
 		fileName     string
-		fileInfo     FileInfo
+		fileInfo     model.FileInfo
 		uploadFile   multipart.File
 		uploadHeader *multipart.FileHeader
 		scene        string
 		output       string
-		fileResult   FileResult
-		result       JsonResult
+		fileResult   model.FileResult
+		result       model.JsonResult
 		data         []byte
 		msg          string
 	)
@@ -230,7 +232,7 @@ func (this *Server) upload(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (this *Server) SaveUploadFile(file multipart.File, header *multipart.FileHeader, fileInfo *FileInfo, r *http.Request) (*FileInfo, error) {
+func (this *Server) SaveUploadFile(file multipart.File, header *multipart.FileHeader, fileInfo *model.FileInfo, r *http.Request) (*model.FileInfo, error) {
 	var (
 		err     error
 		outFile *os.File
@@ -316,7 +318,7 @@ func (this *Server) SaveUploadFile(file multipart.File, header *multipart.FileHe
 	return fileInfo, nil
 }
 
-func (this *Server) SaveSmallFile(fileInfo *FileInfo) error {
+func (this *Server) SaveSmallFile(fileInfo *model.FileInfo) error {
 	var (
 		err      error
 		filename string

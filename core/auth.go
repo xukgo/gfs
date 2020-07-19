@@ -2,7 +2,11 @@ package core
 
 import (
 	"github.com/astaxie/beego/httplib"
+	log "github.com/sjqzhang/seelog"
+	"github.com/xukgo/gfs/model"
 	"net/http"
+	"strings"
+	"time"
 )
 
 func (this *Server) CheckAuth(w http.ResponseWriter, r *http.Request) bool {
@@ -10,7 +14,7 @@ func (this *Server) CheckAuth(w http.ResponseWriter, r *http.Request) bool {
 		err        error
 		req        *httplib.BeegoHTTPRequest
 		result     string
-		jsonResult JsonResult
+		jsonResult model.JsonResult
 	)
 	if err = r.ParseForm(); err != nil {
 		log.Error(err)

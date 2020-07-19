@@ -2,6 +2,7 @@ package core
 
 import (
 	log "github.com/sjqzhang/seelog"
+	"github.com/xukgo/gfs/model"
 	"io"
 	"net/http"
 	"os"
@@ -45,6 +46,6 @@ func (this *Server) Upload(w http.ResponseWriter, r *http.Request) {
 	fpBody, err = os.Open(fn)
 	r.Body = fpBody
 	done := make(chan bool, 1)
-	this.queueUpload <- WrapReqResp{&w, r, done}
+	this.queueUpload <- model.WrapReqResp{&w, r, done}
 	<-done
 }

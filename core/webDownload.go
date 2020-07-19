@@ -2,10 +2,12 @@ package core
 
 import (
 	"bytes"
+	"errors"
 	"github.com/astaxie/beego/httplib"
 	"github.com/nfnt/resize"
 	log "github.com/sjqzhang/seelog"
 	"github.com/xukgo/gfs/constDefine"
+	"github.com/xukgo/gfs/model"
 	"image"
 	"image/jpeg"
 	"image/png"
@@ -163,7 +165,7 @@ func (this *Server) DownloadNotFound(w http.ResponseWriter, r *http.Request) {
 		isDownload bool
 		pathMd5    string
 		peer       string
-		fileInfo   *FileInfo
+		fileInfo   *model.FileInfo
 	)
 	fullpath, smallPath = this.GetFilePathFromRequest(w, r)
 	isDownload = true
@@ -253,7 +255,7 @@ func (this *Server) CheckDownloadAuth(w http.ResponseWriter, r *http.Request) (b
 		fullpath     string
 		smallPath    string
 		pathMd5      string
-		fileInfo     *FileInfo
+		fileInfo     *model.FileInfo
 	)
 	CheckToken := func(token string, md5sum string, timestamp string) bool {
 		if this.util.MD5(md5sum+timestamp) != token {

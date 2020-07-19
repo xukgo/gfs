@@ -5,12 +5,13 @@ import (
 	"github.com/astaxie/beego/httplib"
 	log "github.com/sjqzhang/seelog"
 	"github.com/xukgo/gfs/constDefine"
+	"github.com/xukgo/gfs/model"
 	"os"
 	"strings"
 	"time"
 )
 
-func (this *Server) DownloadFromPeer(peer string, fileInfo *FileInfo) {
+func (this *Server) DownloadFromPeer(peer string, fileInfo *model.FileInfo) {
 	var (
 		err         error
 		filename    string
@@ -21,11 +22,11 @@ func (this *Server) DownloadFromPeer(peer string, fileInfo *FileInfo) {
 		data        []byte
 		downloadUrl string
 	)
-	if Config().RetryCount > 0 && fileInfo.retry >= Config().RetryCount {
+	if Config().RetryCount > 0 && fileInfo.Retry >= Config().RetryCount {
 		log.Error("DownloadFromPeer Error ", fileInfo)
 		return
 	} else {
-		fileInfo.retry = fileInfo.retry + 1
+		fileInfo.Retry = fileInfo.Retry + 1
 	}
 	filename = fileInfo.Name
 	if fileInfo.ReName != "" {
@@ -154,12 +155,12 @@ func (this *Server) DownloadFromPeer(peer string, fileInfo *FileInfo) {
 	}
 }
 
-func (this *Server) CheckFileExistByInfo(md5s string, fileInfo *FileInfo) bool {
+func (this *Server) CheckFileExistByInfo(md5s string, fileInfo *model.FileInfo) bool {
 	var (
 		err      error
 		fullpath string
 		fi       os.FileInfo
-		info     *FileInfo
+		info     *model.FileInfo
 	)
 	if fileInfo == nil {
 		return false

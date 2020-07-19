@@ -4,6 +4,7 @@ import (
 	"fmt"
 	log "github.com/sjqzhang/seelog"
 	"github.com/xukgo/gfs/constDefine"
+	"github.com/xukgo/gfs/model"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -35,7 +36,7 @@ func (this *Server) RepairFileInfoFromFile() {
 		var (
 			files    []os.FileInfo
 			fi       os.FileInfo
-			fileInfo FileInfo
+			fileInfo model.FileInfo
 			sum      string
 			pathMd5  string
 		)
@@ -71,7 +72,7 @@ func (this *Server) RepairFileInfoFromFile() {
 					log.Error(err)
 					continue
 				}
-				fileInfo = FileInfo{
+				fileInfo = model.FileInfo{
 					Size:      fi.Size(),
 					Name:      fi.Name(),
 					Path:      file_path,
