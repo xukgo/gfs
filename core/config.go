@@ -1,9 +1,9 @@
 package core
 
 import (
-	"flag"
 	"fmt"
 	log "github.com/sjqzhang/seelog"
+	"github.com/xukgo/gfs/configRepo"
 	"github.com/xukgo/gfs/constDefine"
 	"io/ioutil"
 	"net/http"
@@ -15,11 +15,6 @@ import (
 )
 
 func init() {
-	flag.Parse()
-	if *v {
-		fmt.Printf("%s\n%s\n%s\n%s\n", VERSION, BUILD_TIME, GO_VERSION, GIT_VERSION)
-		os.Exit(0)
-	}
 	appDir, e1 := filepath.Abs(filepath.Dir(os.Args[0]))
 	curDir, e2 := filepath.Abs(".")
 	if e1 == nil && e2 == nil && appDir != curDir && !strings.Contains(appDir, "go-build") {
@@ -42,13 +37,13 @@ func init() {
 	STATIC_DIR = DOCKER_DIR + constDefine.STATIC_DIR_NAME
 	LARGE_DIR_NAME = "haystack"
 	LARGE_DIR = STORE_DIR + "/haystack"
-	CONST_LEVELDB_FILE_NAME = DATA_DIR + "/fileserver.db"
-	CONST_LOG_LEVELDB_FILE_NAME = DATA_DIR + "/log.db"
-	CONST_STAT_FILE_NAME = DATA_DIR + "/stat.json"
-	CONST_CONF_FILE_NAME = CONF_DIR + "/cfg.json"
-	CONST_SERVER_CRT_FILE_NAME = CONF_DIR + "/server.crt"
-	CONST_SERVER_KEY_FILE_NAME = CONF_DIR + "/server.key"
-	CONST_SEARCH_FILE_NAME = DATA_DIR + "/search.txt"
+	LEVELDB_FILE_NAME = DATA_DIR + "/fileserver.db"
+	LOG_LEVELDB_FILE_NAME = DATA_DIR + "/log.db"
+	STAT_FILE_NAME = DATA_DIR + "/stat.json"
+	CONF_FILE_NAME = CONF_DIR + "/cfg.json"
+	SERVER_CRT_FILE_NAME = CONF_DIR + "/server.crt"
+	SERVER_KEY_FILE_NAME = CONF_DIR + "/server.key"
+	SEARCH_FILE_NAME = DATA_DIR + "/search.txt"
 	FOLDERS = []string{DATA_DIR, STORE_DIR, CONF_DIR, STATIC_DIR}
 	logAccessConfigStr = strings.Replace(constDefine.LOG_ACCESS_CONF_TEMPLATE, "{DOCKER_DIR}", DOCKER_DIR, -1)
 	logConfigStr = strings.Replace(constDefine.LOG_CONF_TEMPLATE, "{DOCKER_DIR}", DOCKER_DIR, -1)
@@ -58,14 +53,14 @@ func init() {
 	Singleton = NewServer()
 
 	peerId := fmt.Sprintf("%d", Singleton.util.RandInt(0, 9))
-	if !Singleton.util.FileExists(CONST_CONF_FILE_NAME) {
+	if !Singleton.util.FileExists(CONF_FILE_NAME) {
 		var ip string
 		if ip = os.Getenv("GFS_IP"); ip == "" {
 			ip = Singleton.util.GetPulicIP()
 		}
 		peer := "http://" + ip + ":8080"
 		cfg := fmt.Sprintf(constDefine.CONF_JSON_TEMPLATE, peerId, peer, peer)
-		Singleton.util.WriteFile(CONST_CONF_FILE_NAME, cfg)
+		Singleton.util.WriteFile(CONF_FILE_NAME, cfg)
 	}
 	if logger, err := log.LoggerFromConfigAsBytes([]byte(logConfigStr)); err != nil {
 		panic(err)
@@ -78,7 +73,7 @@ func init() {
 	} else {
 		log.Error(err.Error())
 	}
-	ParseConfig(CONST_CONF_FILE_NAME)
+	ParseConfig(CONF_FILE_NAME)
 	if Config().QueueSize == 0 {
 		Config().QueueSize = constDefine.CONST_QUEUE_SIZE
 	}
@@ -93,8 +88,8 @@ func init() {
 	Singleton.initComponent(false)
 }
 
-func Config() *GloablConfig {
-	cnf := (*GloablConfig)(atomic.LoadPointer(&ptr))
+func Config() *configRepo.GloablConfig {
+	cnf := (*configRepo.GloablConfig)(atomic.LoadPointer(&ptr))
 	return cnf
 }
 func ParseConfig(filePath string) {
@@ -115,7 +110,7 @@ func ParseConfig(filePath string) {
 			panic(fmt.Sprintln("file path:", filePath, " read all error:", err))
 		}
 	}
-	var c GloablConfig
+	var c configRepo.GloablConfig
 	if err := json.Unmarshal(data, &c); err != nil {
 		panic(fmt.Sprintln("file path:", filePath, "json unmarshal error:", err))
 	}

@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"flag"
 	"fmt"
+	"github.com/xukgo/gfs/configRepo"
 	"github.com/xukgo/gfs/constDefine"
 	"github.com/xukgo/gfs/model"
 	"io"
@@ -46,33 +46,26 @@ var logacc log.LoggerInterface
 var FOLDERS = []string{DATA_DIR, STORE_DIR, CONF_DIR, STATIC_DIR}
 
 var (
-	VERSION     string
-	BUILD_TIME  string
-	GO_VERSION  string
-	GIT_VERSION string
-	v           = flag.Bool("v", false, "display version")
-)
-var (
-	logConfigStr                string
-	logAccessConfigStr          string
-	FileName                    string
-	ptr                         unsafe.Pointer
-	DOCKER_DIR                  = ""
-	STORE_DIR                   = constDefine.STORE_DIR_NAME
-	CONF_DIR                    = constDefine.CONF_DIR_NAME
-	LOG_DIR                     = constDefine.LOG_DIR_NAME
-	DATA_DIR                    = constDefine.DATA_DIR_NAME
-	STATIC_DIR                  = constDefine.STATIC_DIR_NAME
-	LARGE_DIR_NAME              = "haystack"
-	LARGE_DIR                   = STORE_DIR + "/haystack"
-	CONST_LEVELDB_FILE_NAME     = DATA_DIR + "/fileserver.db"
-	CONST_LOG_LEVELDB_FILE_NAME = DATA_DIR + "/log.db"
-	CONST_STAT_FILE_NAME        = DATA_DIR + "/stat.json"
-	CONST_CONF_FILE_NAME        = CONF_DIR + "/cfg.json"
-	CONST_SERVER_CRT_FILE_NAME  = CONF_DIR + "/server.crt"
-	CONST_SERVER_KEY_FILE_NAME  = CONF_DIR + "/server.key"
-	CONST_SEARCH_FILE_NAME      = DATA_DIR + "/search.txt"
-	CONST_UPLOAD_COUNTER_KEY    = "__CONST_UPLOAD_COUNTER_KEY__"
+	logConfigStr             string
+	logAccessConfigStr       string
+	FileName                 string
+	ptr                      unsafe.Pointer
+	DOCKER_DIR               = ""
+	STORE_DIR                = constDefine.STORE_DIR_NAME
+	CONF_DIR                 = constDefine.CONF_DIR_NAME
+	LOG_DIR                  = constDefine.LOG_DIR_NAME
+	DATA_DIR                 = constDefine.DATA_DIR_NAME
+	STATIC_DIR               = constDefine.STATIC_DIR_NAME
+	LARGE_DIR_NAME           = "haystack"
+	LARGE_DIR                = STORE_DIR + "/haystack"
+	LEVELDB_FILE_NAME        = DATA_DIR + "/fileserver.db"
+	LOG_LEVELDB_FILE_NAME    = DATA_DIR + "/log.db"
+	STAT_FILE_NAME           = DATA_DIR + "/stat.json"
+	CONF_FILE_NAME           = CONF_DIR + "/cfg.json"
+	SERVER_CRT_FILE_NAME     = CONF_DIR + "/server.crt"
+	SERVER_KEY_FILE_NAME     = CONF_DIR + "/server.key"
+	SEARCH_FILE_NAME         = DATA_DIR + "/search.txt"
+	CONST_UPLOAD_COUNTER_KEY = "__CONST_UPLOAD_COUNTER_KEY__"
 )
 
 type Server struct {
@@ -139,15 +132,15 @@ func NewServer() *Server {
 		CompactionTableSize: 1024 * 1024 * 20,
 		WriteBuffer:         1024 * 1024 * 20,
 	}
-	Singleton.ldb, err = leveldb.OpenFile(CONST_LEVELDB_FILE_NAME, opts)
+	Singleton.ldb, err = leveldb.OpenFile(LEVELDB_FILE_NAME, opts)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("open db file %s fail,maybe has opening", CONST_LEVELDB_FILE_NAME))
+		fmt.Println(fmt.Sprintf("open db file %s fail,maybe has opening", LEVELDB_FILE_NAME))
 		log.Error(err)
 		panic(err)
 	}
-	Singleton.logDB, err = leveldb.OpenFile(CONST_LOG_LEVELDB_FILE_NAME, opts)
+	Singleton.logDB, err = leveldb.OpenFile(LOG_LEVELDB_FILE_NAME, opts)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("open db file %s fail,maybe has opening", CONST_LOG_LEVELDB_FILE_NAME))
+		fmt.Println(fmt.Sprintf("open db file %s fail,maybe has opening", LOG_LEVELDB_FILE_NAME))
 		log.Error(err)
 		panic(err)
 
@@ -486,7 +479,7 @@ func (this *Server) SaveStat() {
 					if data, err := json.Marshal(stat); err != nil {
 						log.Error(err)
 					} else {
-						this.util.WriteBinFile(CONST_STAT_FILE_NAME, data)
+						this.util.WriteBinFile(STAT_FILE_NAME, data)
 					}
 				}
 			}
@@ -971,7 +964,7 @@ func (this *Server) ConsumerLog() {
 func (this *Server) LoadSearchDict() {
 	go func() {
 		log.Info("Load search dict ....")
-		f, err := os.Open(CONST_SEARCH_FILE_NAME)
+		f, err := os.Open(SEARCH_FILE_NAME)
 		if err != nil {
 			log.Error(err)
 			return
@@ -998,10 +991,10 @@ func (this *Server) SaveSearchDict() {
 		k          string
 		v          interface{}
 	)
-	this.lockMap.LockKey(CONST_SEARCH_FILE_NAME)
-	defer this.lockMap.UnLockKey(CONST_SEARCH_FILE_NAME)
+	this.lockMap.LockKey(SEARCH_FILE_NAME)
+	defer this.lockMap.UnLockKey(SEARCH_FILE_NAME)
 	searchDict = this.searchMap.Get()
-	fp, err = os.OpenFile(CONST_SEARCH_FILE_NAME, os.O_RDWR, 0755)
+	fp, err = os.OpenFile(SEARCH_FILE_NAME, os.O_RDWR, 0755)
 	if err != nil {
 		log.Error(err)
 		return
@@ -1121,7 +1114,7 @@ func (this *Server) Reload(w http.ResponseWriter, r *http.Request) {
 	var (
 		err     error
 		data    []byte
-		cfg     GloablConfig
+		cfg     configRepo.GloablConfig
 		action  string
 		cfgjson string
 		result  model.JsonResult
@@ -1155,12 +1148,12 @@ func (this *Server) Reload(w http.ResponseWriter, r *http.Request) {
 		}
 		result.Status = "ok"
 		cfgjson = this.util.JsonEncodePretty(cfg)
-		this.util.WriteFile(CONST_CONF_FILE_NAME, cfgjson)
+		this.util.WriteFile(CONF_FILE_NAME, cfgjson)
 		w.Write([]byte(this.util.JsonEncodePretty(result)))
 		return
 	}
 	if action == "reload" {
-		if data, err = ioutil.ReadFile(CONST_CONF_FILE_NAME); err != nil {
+		if data, err = ioutil.ReadFile(CONF_FILE_NAME); err != nil {
 			result.Message = err.Error()
 			w.Write([]byte(this.util.JsonEncodePretty(result)))
 			return
@@ -1170,7 +1163,7 @@ func (this *Server) Reload(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(this.util.JsonEncodePretty(result)))
 			return
 		}
-		ParseConfig(CONST_CONF_FILE_NAME)
+		ParseConfig(CONF_FILE_NAME)
 		this.initComponent(true)
 		result.Status = "ok"
 		w.Write([]byte(this.util.JsonEncodePretty(result)))
@@ -1773,7 +1766,7 @@ func (this *Server) Start() {
 	http.HandleFunc("/"+Config().Group+"/", this.Download)
 	fmt.Println("Listen on " + Config().Addr)
 	if Config().EnableHttps {
-		err := http.ListenAndServeTLS(Config().Addr, CONST_SERVER_CRT_FILE_NAME, CONST_SERVER_KEY_FILE_NAME, new(HttpHandler))
+		err := http.ListenAndServeTLS(Config().Addr, SERVER_CRT_FILE_NAME, SERVER_KEY_FILE_NAME, new(HttpHandler))
 		log.Error(err)
 		fmt.Println(err)
 	} else {

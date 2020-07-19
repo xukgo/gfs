@@ -1,4 +1,4 @@
-package core
+package configRepo
 
 type GloablConfig struct {
 	Addr                 string   `json:"addr"`
