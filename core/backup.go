@@ -54,7 +54,7 @@ func (this *Server) BackUp(w http.ResponseWriter, r *http.Request) {
 	}
 	if this.IsPeer(r) {
 		if inner != "1" {
-			for _, peer := range Config().Peers {
+			for _, peer := range this.confRepo.GetPeers() {
 				backUp := func(peer string, date string) {
 					url = fmt.Sprintf("%s%s", peer, this.getRequestURI("backup"))
 					req := httplib.Post(url)

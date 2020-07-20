@@ -20,7 +20,7 @@ func (this *Server) CheckAuth(w http.ResponseWriter, r *http.Request) bool {
 		log.Error(err)
 		return false
 	}
-	req = httplib.Post(Config().AuthUrl)
+	req = httplib.Post(this.confRepo.GetAuthUrl())
 	req.SetTimeout(time.Second*10, time.Second*10)
 	req.Param("__path__", r.URL.Path)
 	req.Param("__query__", r.URL.RawQuery)

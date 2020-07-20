@@ -30,8 +30,8 @@ func (this *Server) Download(w http.ResponseWriter, r *http.Request) {
 	)
 	// redirect to upload
 	if r.RequestURI == "/" || r.RequestURI == "" ||
-		r.RequestURI == "/"+Config().Group ||
-		r.RequestURI == "/"+Config().Group+"/" {
+		r.RequestURI == "/"+this.confRepo.GetGroup() ||
+		r.RequestURI == "/"+this.confRepo.GetGroup()+"/" {
 		this.Index(w, r)
 		return
 	}
@@ -180,7 +180,7 @@ func (this *Server) DownloadNotFound(w http.ResponseWriter, r *http.Request) {
 	} else {
 		pathMd5 = this.util.MD5(fullpath)
 	}
-	for _, peer = range Config().Peers {
+	for _, peer = range this.confRepo.GetPeers() {
 		if fileInfo, err = this.checkPeerFileExist(peer, pathMd5, fullpath); err != nil {
 			log.Error(err)
 			continue
@@ -263,7 +263,7 @@ func (this *Server) CheckDownloadAuth(w http.ResponseWriter, r *http.Request) (b
 		}
 		return true
 	}
-	if Config().EnableDownloadAuth && Config().AuthUrl != "" && !this.IsPeer(r) && !this.CheckAuth(w, r) {
+	if Config().EnableDownloadAuth && this.confRepo.GetAuthUrl() != "" && !this.IsPeer(r) && !this.CheckAuth(w, r) {
 		return false, errors.New("auth fail")
 	}
 	if Config().DownloadUseToken && !this.IsPeer(r) {
@@ -309,14 +309,14 @@ func (this *Server) GetFilePathFromRequest(w http.ResponseWriter, r *http.Reques
 		prefix    string
 	)
 	fullpath = r.RequestURI[1:]
-	if strings.HasPrefix(r.RequestURI, "/"+Config().Group+"/") {
-		fullpath = r.RequestURI[len(Config().Group)+2 : len(r.RequestURI)]
+	if strings.HasPrefix(r.RequestURI, "/"+this.confRepo.GetGroup()+"/") {
+		fullpath = r.RequestURI[len(this.confRepo.GetGroup())+2 : len(r.RequestURI)]
 	}
 	fullpath = strings.Split(fullpath, "?")[0] // just path
 	fullpath = DOCKER_DIR + constDefine.STORE_DIR_NAME + "/" + fullpath
 	prefix = "/" + LARGE_DIR_NAME + "/"
-	if Config().SupportGroupManage {
-		prefix = "/" + Config().Group + "/" + LARGE_DIR_NAME + "/"
+	if this.confRepo.GetSupportGroupManage() {
+		prefix = "/" + this.confRepo.GetGroup() + "/" + LARGE_DIR_NAME + "/"
 	}
 	if strings.HasPrefix(r.RequestURI, prefix) {
 		smallPath = fullpath //notice order

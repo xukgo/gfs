@@ -13,20 +13,21 @@ import (
 
 type HookDataStore struct {
 	tusd.DataStore
+	AuthUrl string
 }
 
 func (store HookDataStore) NewUpload(info tusd.FileInfo) (id string, err error) {
 	var (
 		jsonResult model.JsonResult
 	)
-	if Config().AuthUrl != "" {
+	if store.AuthUrl != "" {
 		if auth_token, ok := info.MetaData["auth_token"]; !ok {
 			msg := "token auth fail,auth_token is not in http header Upload-Metadata," +
 				"in uppy uppy.setMeta({ auth_token: '9ee60e59-cb0f-4578-aaba-29b9fc2919ca' })"
 			log.Error(msg, fmt.Sprintf("current header:%v", info.MetaData))
 			return "", model.InitHttpError(errors.New(msg), 401)
 		} else {
-			req := httplib.Post(Config().AuthUrl)
+			req := httplib.Post(store.AuthUrl)
 			req.Param("auth_token", auth_token)
 			req.SetTimeout(time.Second*5, time.Second*10)
 			content, err := req.String()

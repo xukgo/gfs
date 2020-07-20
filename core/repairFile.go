@@ -66,7 +66,7 @@ func (this *Server) RepairFileInfoFromFile() {
 				//	log.Info(fmt.Sprintf("exist ignore file %s", file_path+"/"+fi.Name()))
 				//	continue
 				//}
-				//sum, err = this.util.GetFileSumByName(file_path+"/"+fi.Name(), Config().FileSumArithmetic)
+				//sum, err = this.util.GetFileSumByName(file_path+"/"+fi.Name(), this.confRepo.GetFileSumArithmetic())
 				sum = pathMd5
 				if err != nil {
 					log.Error(err)

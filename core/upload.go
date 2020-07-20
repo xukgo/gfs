@@ -33,7 +33,7 @@ func (this *Server) ConsumerUpload() {
 			wr.Done <- true
 		}
 	}
-	for i := 0; i < Config().UploadWorker; i++ {
+	for i := 0; i < this.confRepo.GetUploadWorker(); i++ {
 		go ConsumerFunc()
 	}
 }
@@ -62,7 +62,7 @@ func (this *Server) upload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	result.Status = "fail"
-	if Config().AuthUrl != "" {
+	if this.confRepo.GetAuthUrl() != "" {
 		if !this.CheckAuth(w, r) {
 			msg = "auth fail"
 			log.Warn(msg, r.Form)
@@ -97,7 +97,7 @@ func (this *Server) upload(w http.ResponseWriter, r *http.Request) {
 		fileInfo.Peers = []string{}
 		fileInfo.TimeStamp = time.Now().Unix()
 		if scene == "" {
-			scene = Config().DefaultScene
+			scene = this.confRepo.GetDefaultScene()
 		}
 		if output == "" {
 			output = "text"
@@ -130,7 +130,7 @@ func (this *Server) upload(w http.ResponseWriter, r *http.Request) {
 		if Config().EnableDistinctFile {
 			if v, _ := this.GetFileInfoFromLevelDB(fileInfo.Md5); v != nil && v.Md5 != "" {
 				fileResult = this.BuildFileResult(v, r)
-				if Config().RenameFile {
+				if this.confRepo.GetRenameFile() {
 					os.Remove(DOCKER_DIR + fileInfo.Path + "/" + fileInfo.ReName)
 				} else {
 					os.Remove(DOCKER_DIR + fileInfo.Path + "/" + fileInfo.Name)
@@ -245,12 +245,12 @@ func (this *Server) SaveUploadFile(file multipart.File, header *multipart.FileHe
 	if len(Config().Extensions) > 0 && !this.util.Contains(path.Ext(fileInfo.Name), Config().Extensions) {
 		return fileInfo, errors.New("(error)file extension mismatch")
 	}
-	if Config().RenameFile {
+	if this.confRepo.GetRenameFile() {
 		fileInfo.ReName = this.util.MD5(this.util.GetUUID()) + path.Ext(fileInfo.Name)
 	}
 	folder = time.Now().Format("20060102/15/04")
-	if Config().PeerId != "" {
-		folder = fmt.Sprintf(folder+"/%s", Config().PeerId)
+	if this.confRepo.GetPeerId() != "" {
+		folder = fmt.Sprintf(folder+"/%s", this.confRepo.GetPeerId())
 	}
 	if fileInfo.Scene != "" {
 		folder = fmt.Sprintf(STORE_DIR+"/%s/%s", fileInfo.Scene, folder)
@@ -304,9 +304,9 @@ func (this *Server) SaveUploadFile(file multipart.File, header *multipart.FileHe
 	if fi.Size() != header.Size {
 		return fileInfo, errors.New("(error)file uncomplete")
 	}
-	v := "" // this.util.GetFileSum(outFile, Config().FileSumArithmetic)
+	v := "" // this.util.GetFileSum(outFile, this.confRepo.GetFileSumArithmetic())
 	if Config().EnableDistinctFile {
-		v = this.util.GetFileSum(outFile, Config().FileSumArithmetic)
+		v = this.util.GetFileSum(outFile, this.confRepo.GetFileSumArithmetic())
 	} else {
 		v = this.util.MD5(this.GetFilePathByInfo(fileInfo, false))
 	}
@@ -336,7 +336,7 @@ func (this *Server) SaveSmallFile(fileInfo *model.FileInfo) error {
 		filename = fileInfo.ReName
 	}
 	fpath = DOCKER_DIR + fileInfo.Path + "/" + filename
-	largeDir = LARGE_DIR + "/" + Config().PeerId
+	largeDir = LARGE_DIR + "/" + this.confRepo.GetPeerId()
 	if !this.util.FileExists(largeDir) {
 		os.MkdirAll(largeDir, 0775)
 	}
@@ -381,10 +381,10 @@ func (this *Server) CheckScene(scene string) (bool, error) {
 	var (
 		scenes []string
 	)
-	if len(Config().Scenes) == 0 {
+	if len(this.confRepo.GetScenes()) == 0 {
 		return true, nil
 	}
-	for _, s := range Config().Scenes {
+	for _, s := range this.confRepo.GetScenes() {
 		scenes = append(scenes, strings.Split(s, ":")[0])
 	}
 	if !this.util.Contains(scene, scenes) {

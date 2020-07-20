@@ -22,7 +22,7 @@ func (this *Server) DownloadFromPeer(peer string, fileInfo *model.FileInfo) {
 		data        []byte
 		downloadUrl string
 	)
-	if Config().RetryCount > 0 && fileInfo.Retry >= Config().RetryCount {
+	if this.confRepo.GetRetryCount() > 0 && fileInfo.Retry >= this.confRepo.GetRetryCount() {
 		log.Error("DownloadFromPeer Error ", fileInfo)
 		return
 	} else {
@@ -33,12 +33,12 @@ func (this *Server) DownloadFromPeer(peer string, fileInfo *model.FileInfo) {
 		filename = fileInfo.ReName
 	}
 	//如果已经存在且不允许重复文件则返回
-	if fileInfo.OffSet != -2 && Config().EnableDistinctFile && this.CheckFileExistByInfo(fileInfo.Md5, fileInfo) {
+	if fileInfo.OffSet != -2 && this.confRepo.GetEnableDistinctFile() && this.CheckFileExistByInfo(fileInfo.Md5, fileInfo) {
 		// ignore migrate file
 		log.Info(fmt.Sprintf("DownloadFromPeer file Exist, path:%s", fileInfo.Path+"/"+fileInfo.Name))
 		return
 	}
-	if (!Config().EnableDistinctFile || fileInfo.OffSet == -2) && this.util.FileExists(this.GetFilePathByInfo(fileInfo, true)) {
+	if (!this.confRepo.GetEnableDistinctFile() || fileInfo.OffSet == -2) && this.util.FileExists(this.GetFilePathByInfo(fileInfo, true)) {
 		// ignore migrate file
 		if fi, err = os.Stat(this.GetFilePathByInfo(fileInfo, true)); err == nil {
 			if fi.ModTime().Unix() > fileInfo.TimeStamp {
@@ -56,13 +56,13 @@ func (this *Server) DownloadFromPeer(peer string, fileInfo *model.FileInfo) {
 	//fmt.Println("downloadFromPeer",fileInfo)
 	p := strings.Replace(fileInfo.Path, constDefine.STORE_DIR_NAME+"/", "", 1)
 	//filename=this.util.UrlEncode(filename)
-	downloadUrl = peer + "/" + Config().Group + "/" + p + "/" + filename
+	downloadUrl = peer + "/" + this.confRepo.GetGroup() + "/" + p + "/" + filename
 	log.Info("DownloadFromPeer: ", downloadUrl)
 	fpath = DOCKER_DIR + fileInfo.Path + "/" + filename
 	fpathTmp = DOCKER_DIR + fileInfo.Path + "/" + fmt.Sprintf("%s_%s", "tmp_", filename)
 	timeout := fileInfo.Size/1024/1024/1 + 20
-	if Config().SyncTimeout > 0 {
-		timeout = Config().SyncTimeout
+	if this.confRepo.GetSyncTimeout() > 0 {
+		timeout = this.confRepo.GetSyncTimeout()
 	}
 	this.lockMap.LockKey(fpath)
 	defer this.lockMap.UnLockKey(fpath)
@@ -137,7 +137,7 @@ func (this *Server) DownloadFromPeer(peer string, fileInfo *model.FileInfo) {
 	_ = sum
 	//if Config().EnableDistinctFile {
 	//	//DistinctFile
-	//	if sum, err = this.util.GetFileSumByName(fpathTmp, Config().FileSumArithmetic); err != nil {
+	//	if sum, err = this.util.GetFileSumByName(fpathTmp, this.confRepo.GetFileSumArithmetic()); err != nil {
 	//		log.Error(err)
 	//		return
 	//	}

@@ -51,7 +51,7 @@ func (this *Server) CheckFileExist(w http.ResponseWriter, r *http.Request) {
 			if err == nil {
 				sum := this.util.MD5(fpath)
 				//if Config().EnableDistinctFile {
-				//	sum, err = this.util.GetFileSumByName(fpath, Config().FileSumArithmetic)
+				//	sum, err = this.util.GetFileSumByName(fpath, this.confRepo.GetFileSumArithmetic())
 				//	if err != nil {
 				//		log.Error(err)
 				//	}
@@ -61,7 +61,7 @@ func (this *Server) CheckFileExist(w http.ResponseWriter, r *http.Request) {
 					Name:      path.Base(fpath),
 					Size:      fi.Size(),
 					Md5:       sum,
-					Peers:     []string{Config().Host},
+					Peers:     []string{this.confRepo.GetHost()},
 					OffSet:    -1, //very important
 					TimeStamp: fi.ModTime().Unix(),
 				}

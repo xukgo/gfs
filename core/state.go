@@ -112,7 +112,7 @@ func (this *Server) RepairStatWeb(w http.ResponseWriter, r *http.Request) {
 		date = this.util.GetToDay()
 	}
 	if inner != "1" {
-		for _, peer := range Config().Peers {
+		for _, peer := range this.confRepo.GetPeers() {
 			req := httplib.Post(peer + this.getRequestURI("repair_stat"))
 			req.Param("inner", "1")
 			req.Param("date", date)
@@ -250,10 +250,10 @@ func (this *Server) Status(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	sts["Fs.AutoRepair"] = Config().AutoRepair
+	sts["Fs.AutoRepair"] = this.confRepo.GetAutoRepair()
 	sts["Fs.QueueUpload"] = len(this.queueUpload)
 	sts["Fs.RefreshInterval"] = Config().RefreshInterval
-	sts["Fs.Peers"] = Config().Peers
+	sts["Fs.Peers"] = this.confRepo.GetPeers()
 	sts["Fs.Local"] = this.host
 	sts["Fs.FileStats"] = this.GetStat()
 	sts["Fs.ShowDir"] = Config().ShowDir

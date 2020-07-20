@@ -19,6 +19,7 @@ require (
 	github.com/sjqzhang/goutil v0.0.0-20190521040736-8e3b861db0d2
 	github.com/sjqzhang/seelog v0.0.0-20180104061743-556439109558
 	github.com/sjqzhang/tusd v0.0.0-20190220031306-a6a9d78ef54a
-	github.com/syndtr/goleveldb v1.0.0
+	github.com/syndtr/goleveldb v1.0.1-0.20190923125748-758128399b1d
+	github.com/xukgo/gsaber v0.0.0-20200714081057-b1fa2d43b6c5
 	gopkg.in/Acconut/lockfile.v1 v1.1.0 // indirect
 )

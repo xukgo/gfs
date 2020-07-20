@@ -3,18 +3,14 @@ package core
 import (
 	"fmt"
 	log "github.com/sjqzhang/seelog"
-	"github.com/xukgo/gfs/configRepo"
 	"github.com/xukgo/gfs/constDefine"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync/atomic"
-	"unsafe"
 )
 
-func init() {
+func InitConfig(supportGroupManage bool, group string) {
 	appDir, e1 := filepath.Abs(filepath.Dir(os.Args[0]))
 	curDir, e2 := filepath.Abs(".")
 	if e1 == nil && e2 == nil && appDir != curDir && !strings.Contains(appDir, "go-build") {
@@ -52,16 +48,16 @@ func init() {
 	}
 	Singleton = NewServer()
 
-	peerId := fmt.Sprintf("%d", Singleton.util.RandInt(0, 9))
-	if !Singleton.util.FileExists(CONF_FILE_NAME) {
-		var ip string
-		if ip = os.Getenv("GFS_IP"); ip == "" {
-			ip = Singleton.util.GetPulicIP()
-		}
-		peer := "http://" + ip + ":8080"
-		cfg := fmt.Sprintf(constDefine.CONF_JSON_TEMPLATE, peerId, peer, peer)
-		Singleton.util.WriteFile(CONF_FILE_NAME, cfg)
-	}
+	//peerId := fmt.Sprintf("%d", Singleton.util.RandInt(0, 9))
+	//if !Singleton.util.FileExists(CONF_FILE_NAME) {
+	//	var ip string
+	//	if ip = os.Getenv("GFS_IP"); ip == "" {
+	//		ip = Singleton.util.GetPulicIP()
+	//	}
+	//	peer := "http://" + ip + ":8080"
+	//	cfg := fmt.Sprintf(constDefine.CONF_JSON_TEMPLATE, peerId, peer, peer)
+	//	Singleton.util.WriteFile(CONF_FILE_NAME, cfg)
+	//}
 	if logger, err := log.LoggerFromConfigAsBytes([]byte(logConfigStr)); err != nil {
 		panic(err)
 	} else {
@@ -73,48 +69,49 @@ func init() {
 	} else {
 		log.Error(err.Error())
 	}
-	ParseConfig(CONF_FILE_NAME)
-	if Config().QueueSize == 0 {
-		Config().QueueSize = constDefine.CONST_QUEUE_SIZE
-	}
-	if Config().PeerId == "" {
-		Config().PeerId = peerId
-	}
-	if Config().SupportGroupManage {
-		staticHandler = http.StripPrefix("/"+Config().Group+"/", http.FileServer(http.Dir(STORE_DIR)))
+	//ParseConfig(CONF_FILE_NAME)
+	//if Config().QueueSize == 0 {
+	//	Config().QueueSize = constDefine.CONST_QUEUE_SIZE
+	//}
+	//if this.confRepo.GetPeerId() == "" {
+	//	this.confRepo.GetPeerId() = peerId
+	//}
+
+	if supportGroupManage {
+		staticHandler = http.StripPrefix("/"+group+"/", http.FileServer(http.Dir(STORE_DIR)))
 	} else {
 		staticHandler = http.StripPrefix("/", http.FileServer(http.Dir(STORE_DIR)))
 	}
 	Singleton.initComponent(false)
 }
 
-func Config() *configRepo.GloablConfig {
-	cnf := (*configRepo.GloablConfig)(atomic.LoadPointer(&ptr))
-	return cnf
-}
-func ParseConfig(filePath string) {
-	var (
-		data []byte
-	)
-	if filePath == "" {
-		data = []byte(strings.TrimSpace(constDefine.CONF_JSON_TEMPLATE))
-	} else {
-		file, err := os.Open(filePath)
-		if err != nil {
-			panic(fmt.Sprintln("open file path:", filePath, "error:", err))
-		}
-		defer file.Close()
-		FileName = filePath
-		data, err = ioutil.ReadAll(file)
-		if err != nil {
-			panic(fmt.Sprintln("file path:", filePath, " read all error:", err))
-		}
-	}
-	var c configRepo.GloablConfig
-	if err := json.Unmarshal(data, &c); err != nil {
-		panic(fmt.Sprintln("file path:", filePath, "json unmarshal error:", err))
-	}
-	log.Info(c)
-	atomic.StorePointer(&ptr, unsafe.Pointer(&c))
-	log.Info("config parse success")
-}
+//func Config() *configRepo.GloablConfig {
+//	cnf := (*configRepo.GloablConfig)(atomic.LoadPointer(&ptr))
+//	return cnf
+//}
+//func ParseConfig(filePath string) {
+//	var (
+//		data []byte
+//	)
+//	if filePath == "" {
+//		data = []byte(strings.TrimSpace(constDefine.CONF_JSON_TEMPLATE))
+//	} else {
+//		file, err := os.Open(filePath)
+//		if err != nil {
+//			panic(fmt.Sprintln("open file path:", filePath, "error:", err))
+//		}
+//		defer file.Close()
+//		FileName = filePath
+//		data, err = ioutil.ReadAll(file)
+//		if err != nil {
+//			panic(fmt.Sprintln("file path:", filePath, " read all error:", err))
+//		}
+//	}
+//	var c configRepo.GloablConfig
+//	if err := json.Unmarshal(data, &c); err != nil {
+//		panic(fmt.Sprintln("file path:", filePath, "json unmarshal error:", err))
+//	}
+//	log.Info(c)
+//	atomic.StorePointer(&ptr, unsafe.Pointer(&c))
+//	log.Info("config parse success")
+//}

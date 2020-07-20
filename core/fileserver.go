@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/xukgo/gfs/configRepo"
 	"github.com/xukgo/gfs/constDefine"
+	"github.com/xukgo/gfs/iService"
 	"github.com/xukgo/gfs/model"
 	"io"
 	"io/ioutil"
@@ -84,6 +85,7 @@ type Server struct {
 	searchMap      *goutil.CommonMap
 	curDate        string
 	host           string
+	confRepo       iService.IConfigRepo
 }
 
 func NewServer() *Server {
@@ -192,7 +194,7 @@ func (this *Server) CheckFileAndSendToPeer(date string, filename string, isForce
 			if isForceUpload {
 				fileInfo.Peers = []string{}
 			}
-			if len(fileInfo.Peers) > len(Config().Peers) {
+			if len(fileInfo.Peers) > len(this.confRepo.GetPeers()) {
 				continue
 			}
 			if !this.util.Contains(this.host, fileInfo.Peers) {
@@ -228,7 +230,7 @@ func (this *Server) postFileToPeer(fileInfo *model.FileInfo) {
 		}
 	}()
 	//fmt.Println("postFile",fileInfo)
-	for i, peer = range Config().Peers {
+	for i, peer = range this.confRepo.GetPeers() {
 		_ = i
 		if fileInfo.Peers == nil {
 			fileInfo.Peers = []string{}
@@ -256,7 +258,7 @@ func (this *Server) postFileToPeer(fileInfo *model.FileInfo) {
 				}
 			}
 		}
-		if fileInfo.OffSet != -2 && Config().EnableDistinctFile {
+		if fileInfo.OffSet != -2 && this.confRepo.GetEnableDistinctFile() {
 			//not migrate file should check or update file
 			// where not EnableDistinctFile should check
 			if info, err = this.checkPeerFileExist(peer, fileInfo.Md5, ""); info.Md5 != "" {
@@ -277,7 +279,7 @@ func (this *Server) postFileToPeer(fileInfo *model.FileInfo) {
 		b.Param("fileInfo", string(data))
 		result, err = b.String()
 		if err != nil {
-			if fileInfo.Retry <= Config().RetryCount {
+			if fileInfo.Retry <= this.confRepo.GetRetryCount() {
 				fileInfo.Retry = fileInfo.Retry + 1
 				this.AppendToQueue(fileInfo)
 			}
@@ -422,7 +424,7 @@ func (this *Server) Sync(w http.ResponseWriter, r *http.Request) {
 		isForceUpload = true
 	}
 	if inner != "1" {
-		for _, peer := range Config().Peers {
+		for _, peer := range this.confRepo.GetPeers() {
 			req := httplib.Post(peer + this.getRequestURI("sync"))
 			req.Param("force", force)
 			req.Param("inner", "1")
@@ -522,16 +524,16 @@ func (this *Server) IsPeer(r *http.Request) bool {
 	}
 	//return true
 	ip = this.util.GetClientIp(r)
-	if this.util.Contains("0.0.0.0", Config().AdminIps) {
+	if this.util.Contains("0.0.0.0", this.confRepo.GetAdminIps()) {
 		if IsPublicIP(net.ParseIP(ip)) {
 			return false
 		}
 		return true
 	}
-	if this.util.Contains(ip, Config().AdminIps) {
+	if this.util.Contains(ip, this.confRepo.GetAdminIps()) {
 		return true
 	}
-	for _, v := range Config().AdminIps {
+	for _, v := range this.confRepo.GetAdminIps() {
 		if strings.Contains(v, "/") {
 			if _, cidr, err = net.ParseCIDR(v); err != nil {
 				log.Error(err)
@@ -551,7 +553,7 @@ func (this *Server) IsPeer(r *http.Request) bool {
 	}
 	ip = "http://" + ip
 	bflag = false
-	for _, peer = range Config().Peers {
+	for _, peer = range this.confRepo.GetPeers() {
 		if strings.HasPrefix(peer, ip) {
 			bflag = true
 			break
@@ -697,7 +699,7 @@ func (this *Server) SyncFileInfo(w http.ResponseWriter, r *http.Request) {
 		filename = fileInfo.ReName
 	}
 	p := strings.Replace(fileInfo.Path, STORE_DIR+"/", "", 1)
-	downloadUrl := fmt.Sprintf("http://%s/%s", r.Host, Config().Group+"/"+p+"/"+filename)
+	downloadUrl := fmt.Sprintf("http://%s/%s", r.Host, this.confRepo.GetGroup()+"/"+p+"/"+filename)
 	log.Info("SyncFileInfo: ", downloadUrl)
 	w.Write([]byte(downloadUrl))
 }
@@ -718,7 +720,7 @@ func (this *Server) GetFileInfo(w http.ResponseWriter, r *http.Request) {
 	}
 	md5sum = r.FormValue("md5")
 	if fpath != "" {
-		fpath = strings.Replace(fpath, "/"+Config().Group+"/", constDefine.STORE_DIR_NAME+"/", 1)
+		fpath = strings.Replace(fpath, "/"+this.confRepo.GetGroup()+"/", constDefine.STORE_DIR_NAME+"/", 1)
 		md5sum = this.util.MD5(fpath)
 	}
 	if fileInfo, err = this.GetFileInfoFromLevelDB(md5sum); err != nil {
@@ -754,16 +756,16 @@ func (this *Server) RemoveFile(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(this.GetClusterNotPermitMessage(r)))
 		return
 	}
-	if Config().AuthUrl != "" && !this.CheckAuth(w, r) {
+	if this.confRepo.GetAuthUrl() != "" && !this.CheckAuth(w, r) {
 		this.NotPermit(w, r)
 		return
 	}
 	if fpath != "" && md5sum == "" {
-		fpath = strings.Replace(fpath, "/"+Config().Group+"/", constDefine.STORE_DIR_NAME+"/", 1)
+		fpath = strings.Replace(fpath, "/"+this.confRepo.GetGroup()+"/", constDefine.STORE_DIR_NAME+"/", 1)
 		md5sum = this.util.MD5(fpath)
 	}
 	if inner != "1" {
-		for _, peer := range Config().Peers {
+		for _, peer := range this.confRepo.GetPeers() {
 			delFile := func(peer string, md5sum string, fileInfo *model.FileInfo) {
 				delUrl = fmt.Sprintf("%s%s", peer, this.getRequestURI("delete"))
 				req := httplib.Post(delUrl)
@@ -817,8 +819,8 @@ func (this *Server) getRequestURI(action string) string {
 	var (
 		uri string
 	)
-	if Config().SupportGroupManage {
-		uri = "/" + Config().Group + "/" + action
+	if this.confRepo.GetSupportGroupManage() {
+		uri = "/" + this.confRepo.GetGroup() + "/" + action
 	} else {
 		uri = "/" + action
 	}
@@ -834,24 +836,24 @@ func (this *Server) BuildFileResult(fileInfo *model.FileInfo, r *http.Request) m
 		host        string
 		protocol    string
 	)
-	if Config().EnableHttps {
+	if this.confRepo.GetEnableHttps() {
 		protocol = "https"
 	} else {
 		protocol = "http"
 	}
-	host = strings.Replace(Config().Host, "http://", "", -1)
+	host = strings.Replace(this.confRepo.GetHost(), "http://", "", -1)
 	if r != nil {
 		host = r.Host
 	}
-	if !strings.HasPrefix(Config().DownloadDomain, "http") {
-		if Config().DownloadDomain == "" {
-			Config().DownloadDomain = fmt.Sprintf("%s://%s", protocol, host)
+	if !strings.HasPrefix(this.confRepo.GetDownloadDomain(), "http") {
+		if this.confRepo.GetDownloadDomain() == "" {
+			this.confRepo.SetDownloadDomain(fmt.Sprintf("%s://%s", protocol, host))
 		} else {
-			Config().DownloadDomain = fmt.Sprintf("%s://%s", protocol, Config().DownloadDomain)
+			this.confRepo.SetDownloadDomain(fmt.Sprintf("%s://%s", protocol, this.confRepo.GetDownloadDomain()))
 		}
 	}
-	if Config().DownloadDomain != "" {
-		domain = Config().DownloadDomain
+	if this.confRepo.GetDownloadDomain() != "" {
+		domain = this.confRepo.GetDownloadDomain()
 	} else {
 		domain = fmt.Sprintf("%s://%s", protocol, host)
 	}
@@ -860,14 +862,14 @@ func (this *Server) BuildFileResult(fileInfo *model.FileInfo, r *http.Request) m
 		outname = fileInfo.ReName
 	}
 	p = strings.Replace(fileInfo.Path, constDefine.STORE_DIR_NAME+"/", "", 1)
-	if Config().SupportGroupManage {
-		p = Config().Group + "/" + p + "/" + outname
+	if this.confRepo.GetSupportGroupManage() {
+		p = this.confRepo.GetGroup() + "/" + p + "/" + outname
 	} else {
 		p = p + "/" + outname
 	}
 	downloadUrl = fmt.Sprintf("%s://%s/%s", protocol, host, p)
-	if Config().DownloadDomain != "" {
-		downloadUrl = fmt.Sprintf("%s/%s", Config().DownloadDomain, p)
+	if this.confRepo.GetDownloadDomain() != "" {
+		downloadUrl = fmt.Sprintf("%s/%s", this.confRepo.GetDownloadDomain(), p)
 	}
 	fileResult.Url = downloadUrl
 	fileResult.Md5 = fileInfo.Md5
@@ -927,7 +929,7 @@ func (this *Server) ConsumerDownLoad() {
 			}
 		}
 	}
-	for i := 0; i < Config().SyncWorker; i++ {
+	for i := 0; i < this.confRepo.GetSyncWorker(); i++ {
 		go ConsumerFunc()
 	}
 }
@@ -1011,7 +1013,7 @@ func (this *Server) ConsumerPostToPeer() {
 			this.postFileToPeer(&fileInfo)
 		}
 	}
-	for i := 0; i < Config().SyncWorker; i++ {
+	for i := 0; i < this.confRepo.GetSyncWorker(); i++ {
 		go ConsumerFunc()
 	}
 }
@@ -1071,7 +1073,7 @@ func (this *Server) CheckClusterStatus() {
 			body    string
 			req     *httplib.BeegoHTTPRequest
 		)
-		for _, peer := range Config().Peers {
+		for _, peer := range this.confRepo.GetPeers() {
 			req = httplib.Get(fmt.Sprintf("%s%s", peer, this.getRequestURI("status")))
 			req.SetTimeout(time.Second*5, time.Second*5)
 			err = req.ToJSON(&status)
@@ -1101,7 +1103,7 @@ func (this *Server) RepairFileInfo(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(this.GetClusterNotPermitMessage(r)))
 		return
 	}
-	if !Config().EnableMigrate {
+	if !this.confRepo.GetEnableMigrate() {
 		w.Write([]byte("please set enable_migrate=true"))
 		return
 	}
@@ -1129,7 +1131,7 @@ func (this *Server) Reload(w http.ResponseWriter, r *http.Request) {
 	action = r.FormValue("action")
 	_ = cfgjson
 	if action == "get" {
-		result.Data = Config()
+		result.Data = configRepo.GetSingleton()
 		result.Status = "ok"
 		w.Write([]byte(this.util.JsonEncodePretty(result)))
 		return
@@ -1163,7 +1165,7 @@ func (this *Server) Reload(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(this.util.JsonEncodePretty(result)))
 			return
 		}
-		ParseConfig(CONF_FILE_NAME)
+		configRepo.InitRepo(CONF_FILE_NAME)
 		this.initComponent(true)
 		result.Status = "ok"
 		w.Write([]byte(this.util.JsonEncodePretty(result)))
@@ -1282,8 +1284,8 @@ func (this *Server) Report(w http.ResponseWriter, r *http.Request) {
 				return
 			} else {
 				html = string(data)
-				if Config().SupportGroupManage {
-					html = strings.Replace(html, "{group}", "/"+Config().Group, 1)
+				if this.confRepo.GetSupportGroupManage() {
+					html = strings.Replace(html, "{group}", "/"+this.confRepo.GetGroup(), 1)
 				} else {
 					html = strings.Replace(html, "{group}", "", 1)
 				}
@@ -1327,10 +1329,10 @@ func (this *Server) Index(w http.ResponseWriter, r *http.Request) {
 	)
 	uploadUrl = "/upload"
 	uploadBigUrl = constDefine.CONST_BIG_UPLOAD_PATH_SUFFIX
-	if Config().EnableWebUpload {
-		if Config().SupportGroupManage {
-			uploadUrl = fmt.Sprintf("/%s/upload", Config().Group)
-			uploadBigUrl = fmt.Sprintf("/%s%s", Config().Group, constDefine.CONST_BIG_UPLOAD_PATH_SUFFIX)
+	if this.confRepo.GetEnableWebUpload() {
+		if this.confRepo.GetSupportGroupManage() {
+			uploadUrl = fmt.Sprintf("/%s/upload", this.confRepo.GetGroup())
+			uploadBigUrl = fmt.Sprintf("/%s%s", this.confRepo.GetGroup(), constDefine.CONST_BIG_UPLOAD_PATH_SUFFIX)
 		}
 		uppy = `<html>
 			  
@@ -1393,7 +1395,7 @@ func (this *Server) Index(w http.ResponseWriter, r *http.Request) {
 			this.util.WriteFile(uppyFileName, uppy)
 		}
 		fmt.Fprintf(w,
-			fmt.Sprintf(uppy, uploadUrl, Config().DefaultScene, uploadBigUrl))
+			fmt.Sprintf(uppy, uploadUrl, this.confRepo.GetDefaultScene(), uploadBigUrl))
 	} else {
 		w.Write([]byte("web upload deny"))
 	}
@@ -1405,7 +1407,7 @@ func (this *Server) initTus() {
 		fileLog *os.File
 		bigDir  string
 	)
-	BIG_DIR := STORE_DIR + "/_big/" + Config().PeerId
+	BIG_DIR := STORE_DIR + "/_big/" + this.confRepo.GetPeerId()
 	os.MkdirAll(BIG_DIR, 0775)
 	os.MkdirAll(LOG_DIR, 0775)
 	store := filestore.FileStore{
@@ -1433,8 +1435,8 @@ func (this *Server) initTus() {
 	}()
 	l := slog.New(fileLog, "[tusd] ", slog.LstdFlags)
 	bigDir = constDefine.CONST_BIG_UPLOAD_PATH_SUFFIX
-	if Config().SupportGroupManage {
-		bigDir = fmt.Sprintf("/%s%s", Config().Group, constDefine.CONST_BIG_UPLOAD_PATH_SUFFIX)
+	if this.confRepo.GetSupportGroupManage() {
+		bigDir = fmt.Sprintf("/%s%s", this.confRepo.GetGroup(), constDefine.CONST_BIG_UPLOAD_PATH_SUFFIX)
 	}
 	composer := tusd.NewStoreComposer()
 	// support raw tus upload and download
@@ -1451,7 +1453,7 @@ func (this *Server) initTus() {
 			log.Error(err)
 			return nil, err
 		} else {
-			if Config().AuthUrl != "" {
+			if this.confRepo.GetAuthUrl() != "" {
 				fileResult := this.util.JsonEncodePretty(this.BuildFileResult(fi, nil))
 				bufferReader := bytes.NewBuffer([]byte(fileResult))
 				return bufferReader, nil
@@ -1492,6 +1494,7 @@ func (this *Server) initTus() {
 	SetupPreHooks := func(composer *tusd.StoreComposer) {
 		composer.UseCore(HookDataStore{
 			DataStore: composer.Core,
+			AuthUrl:   this.confRepo.GetAuthUrl(),
 		})
 	}
 	SetupPreHooks(composer)
@@ -1509,7 +1512,7 @@ func (this *Server) initTus() {
 				log.Info("CompleteUploads", info)
 				name := ""
 				pathCustom := ""
-				scene := Config().DefaultScene
+				scene := this.confRepo.GetDefaultScene()
 				if v, ok := info.MetaData["filename"]; ok {
 					name = v
 				}
@@ -1523,7 +1526,7 @@ func (this *Server) initTus() {
 				md5sum := ""
 				oldFullPath := BIG_DIR + "/" + info.ID + ".bin"
 				infoFullPath := BIG_DIR + "/" + info.ID + ".info"
-				if md5sum, err = this.util.GetFileSumByName(oldFullPath, Config().FileSumArithmetic); err != nil {
+				if md5sum, err = this.util.GetFileSumByName(oldFullPath, this.confRepo.GetFileSumArithmetic()); err != nil {
 					log.Error(err)
 					continue
 				}
@@ -1532,7 +1535,7 @@ func (this *Server) initTus() {
 				if name != "" {
 					filename = name
 				}
-				if Config().RenameFile {
+				if this.confRepo.GetRenameFile() {
 					filename = md5sum + ext
 				}
 				timeStamp := time.Now().Unix()
@@ -1540,7 +1543,7 @@ func (this *Server) initTus() {
 				if pathCustom != "" {
 					fpath = "/" + strings.Replace(pathCustom, ".", "", -1) + "/"
 				}
-				newFullPath := STORE_DIR + "/" + scene + fpath + Config().PeerId + "/" + filename
+				newFullPath := STORE_DIR + "/" + scene + fpath + this.confRepo.GetPeerId() + "/" + filename
 				if pathCustom != "" {
 					newFullPath = STORE_DIR + "/" + scene + fpath + filename
 				}
@@ -1561,9 +1564,9 @@ func (this *Server) initTus() {
 					}
 				}
 				fpath2 := ""
-				fpath2 = constDefine.STORE_DIR_NAME + "/" + Config().DefaultScene + fpath + Config().PeerId
+				fpath2 = constDefine.STORE_DIR_NAME + "/" + this.confRepo.GetDefaultScene() + fpath + this.confRepo.GetPeerId()
 				if pathCustom != "" {
-					fpath2 = constDefine.STORE_DIR_NAME + "/" + Config().DefaultScene + fpath
+					fpath2 = constDefine.STORE_DIR_NAME + "/" + this.confRepo.GetDefaultScene() + fpath
 					fpath2 = strings.TrimRight(fpath2, "/")
 				}
 
@@ -1619,21 +1622,21 @@ func (this *Server) initComponent(isReload bool) {
 	if ip = os.Getenv("GFS_IP"); ip == "" {
 		ip = this.util.GetPulicIP()
 	}
-	if Config().Host == "" {
-		if len(strings.Split(Config().Addr, ":")) == 2 {
-			Singleton.host = fmt.Sprintf("http://%s:%s", ip, strings.Split(Config().Addr, ":")[1])
-			Config().Host = Singleton.host
+	if this.confRepo.GetHost() == "" {
+		if len(strings.Split(this.confRepo.GetAddr(), ":")) == 2 {
+			Singleton.host = fmt.Sprintf("http://%s:%s", ip, strings.Split(this.confRepo.GetAddr(), ":")[1])
+			this.confRepo.GetHost() = Singleton.host
 		}
 	} else {
-		if strings.HasPrefix(Config().Host, "http") {
-			Singleton.host = Config().Host
+		if strings.HasPrefix(this.confRepo.GetHost(), "http") {
+			Singleton.host = this.confRepo.GetHost()
 		} else {
-			Singleton.host = "http://" + Config().Host
+			Singleton.host = "http://" + this.confRepo.GetHost()
 		}
 	}
 	ex, _ := regexp.Compile("\\d+\\.\\d+\\.\\d+\\.\\d+")
 	var peers []string
-	for _, peer := range Config().Peers {
+	for _, peer := range this.confRepo.GetPeers() {
 		if this.util.Contains(ip, ex.FindAllString(peer, -1)) ||
 			this.util.Contains("127.0.0.1", ex.FindAllString(peer, -1)) {
 			continue
@@ -1644,45 +1647,45 @@ func (this *Server) initComponent(isReload bool) {
 			peers = append(peers, "http://"+peer)
 		}
 	}
-	Config().Peers = peers
+	this.confRepo.GetPeers() = peers
 	if !isReload {
 		this.FormatStatInfo()
-		if Config().EnableTus {
+		if this.confRepo.GetEnableTus() {
 			this.initTus()
 		}
 	}
-	for _, s := range Config().Scenes {
+	for _, s := range this.confRepo.GetScenes() {
 		kv := strings.Split(s, ":")
 		if len(kv) == 2 {
 			this.sceneMap.Put(kv[0], kv[1])
 		}
 	}
-	if Config().ReadTimeout == 0 {
-		Config().ReadTimeout = 60 * 10
+	if this.confRepo.GetReadTimeout() == 0 {
+		this.confRepo.GetReadTimeout() = 60 * 10
 	}
-	if Config().WriteTimeout == 0 {
-		Config().WriteTimeout = 60 * 10
+	if this.confRepo.GetWriteTimeout() == 0 {
+		this.confRepo.GetWriteTimeout() = 60 * 10
 	}
-	if Config().SyncWorker == 0 {
-		Config().SyncWorker = 200
+	if this.confRepo.GetSyncWorker() == 0 {
+		this.confRepo.GetSyncWorker() = 200
 	}
-	if Config().UploadWorker == 0 {
-		Config().UploadWorker = runtime.NumCPU() + 4
+	if this.confRepo.GetUploadWorker() == 0 {
+		this.confRepo.GetUploadWorker() = runtime.NumCPU() + 4
 		if runtime.NumCPU() < 4 {
-			Config().UploadWorker = 8
+			this.confRepo.GetUploadWorker() = 8
 		}
 	}
-	if Config().UploadQueueSize == 0 {
-		Config().UploadQueueSize = 200
+	if this.confRepo.GetUploadQueueSize() == 0 {
+		this.confRepo.GetUploadQueueSize() = 200
 	}
-	if Config().RetryCount == 0 {
-		Config().RetryCount = 3
+	if this.confRepo.GetRetryCount() == 0 {
+		this.confRepo.GetRetryCount() = 3
 	}
-	if Config().SyncDelay == 0 {
-		Config().SyncDelay = 60
+	if this.confRepo.GetSyncDelay() == 0 {
+		this.confRepo.GetSyncDelay() = 60
 	}
-	if Config().WatchChanSize == 0 {
-		Config().WatchChanSize = 100000
+	if this.confRepo.GetWatchChanSize() == 0 {
+		this.confRepo.GetWatchChanSize() = 100000
 	}
 }
 
@@ -1711,10 +1714,10 @@ func (this *Server) Start() {
 	//下载超时一定时间的删除
 	go this.RemoveDownloading()
 	//go this.LoadSearchDict()
-	if Config().EnableMigrate {
+	if this.confRepo.GetEnableMigrate() {
 		go this.RepairFileInfoFromFile()
 	}
-	if Config().AutoRepair {
+	if this.confRepo.GetAutoRepair() {
 		go func() {
 			for {
 				time.Sleep(time.Minute * 3)
@@ -1724,8 +1727,8 @@ func (this *Server) Start() {
 		}()
 	}
 	groupRoute := ""
-	if Config().SupportGroupManage {
-		groupRoute = "/" + Config().Group
+	if this.confRepo.GetSupportGroupManage() {
+		groupRoute = "/" + this.confRepo.GetGroup()
 	}
 	go func() { // force free memory
 		for {
@@ -1763,20 +1766,20 @@ func (this *Server) Start() {
 	http.HandleFunc(fmt.Sprintf("%s/get_md5s_by_date", groupRoute), this.GetMd5sForWeb)
 	http.HandleFunc(fmt.Sprintf("%s/receive_md5s", groupRoute), this.ReceiveMd5s)
 	http.Handle(fmt.Sprintf("%s/static/", groupRoute), http.StripPrefix(fmt.Sprintf("%s/static/", groupRoute), http.FileServer(http.Dir("./static"))))
-	http.HandleFunc("/"+Config().Group+"/", this.Download)
-	fmt.Println("Listen on " + Config().Addr)
-	if Config().EnableHttps {
-		err := http.ListenAndServeTLS(Config().Addr, SERVER_CRT_FILE_NAME, SERVER_KEY_FILE_NAME, new(HttpHandler))
+	http.HandleFunc("/"+this.confRepo.GetGroup()+"/", this.Download)
+	fmt.Println("Listen on " + this.confRepo.GetAddr())
+	if this.confRepo.GetEnableHttps() {
+		err := http.ListenAndServeTLS(this.confRepo.GetAddr(), SERVER_CRT_FILE_NAME, SERVER_KEY_FILE_NAME, new(HttpHandler))
 		log.Error(err)
 		fmt.Println(err)
 	} else {
 		srv := &http.Server{
-			Addr:              Config().Addr,
+			Addr:              this.confRepo.GetAddr(),
 			Handler:           new(HttpHandler),
-			ReadTimeout:       time.Duration(Config().ReadTimeout) * time.Second,
-			ReadHeaderTimeout: time.Duration(Config().ReadHeaderTimeout) * time.Second,
-			WriteTimeout:      time.Duration(Config().WriteTimeout) * time.Second,
-			IdleTimeout:       time.Duration(Config().IdleTimeout) * time.Second,
+			ReadTimeout:       time.Duration(this.confRepo.GetReadTimeout()) * time.Second,
+			ReadHeaderTimeout: time.Duration(this.confRepo.GetReadHeaderTimeout()) * time.Second,
+			WriteTimeout:      time.Duration(this.confRepo.GetWriteTimeout()) * time.Second,
+			IdleTimeout:       time.Duration(this.confRepo.GetIdleTimeout()) * time.Second,
 		}
 		err := srv.ListenAndServe()
 		log.Error(err)

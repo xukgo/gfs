@@ -48,7 +48,7 @@ func (this *Server) AutoRepair(forceRepair bool) {
 			}
 			log.Info(fmt.Sprintf("syn file from %s date %s", peer, dateStat.Date))
 		}
-		for _, peer := range Config().Peers {
+		for _, peer := range this.confRepo.GetPeers() {
 			req := httplib.Post(fmt.Sprintf("%s%s", peer, this.getRequestURI("stat")))
 			req.Param("inner", "1")
 			req.SetTimeout(time.Second*5, time.Second*15)
