@@ -19,7 +19,6 @@ import (
 	"os/signal"
 	"path"
 	"regexp"
-	"runtime"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -1660,33 +1659,33 @@ func (this *Server) initComponent(isReload bool) {
 			this.sceneMap.Put(kv[0], kv[1])
 		}
 	}
-	if this.confRepo.GetReadTimeout() == 0 {
-		this.confRepo.GetReadTimeout() = 60 * 10
-	}
-	if this.confRepo.GetWriteTimeout() == 0 {
-		this.confRepo.GetWriteTimeout() = 60 * 10
-	}
-	if this.confRepo.GetSyncWorker() == 0 {
-		this.confRepo.GetSyncWorker() = 200
-	}
-	if this.confRepo.GetUploadWorker() == 0 {
-		this.confRepo.GetUploadWorker() = runtime.NumCPU() + 4
-		if runtime.NumCPU() < 4 {
-			this.confRepo.GetUploadWorker() = 8
-		}
-	}
-	if this.confRepo.GetUploadQueueSize() == 0 {
-		this.confRepo.GetUploadQueueSize() = 200
-	}
-	if this.confRepo.GetRetryCount() == 0 {
-		this.confRepo.GetRetryCount() = 3
-	}
-	if this.confRepo.GetSyncDelay() == 0 {
-		this.confRepo.GetSyncDelay() = 60
-	}
-	if this.confRepo.GetWatchChanSize() == 0 {
-		this.confRepo.GetWatchChanSize() = 100000
-	}
+	//if this.confRepo.GetReadTimeout() == 0 {
+	//	this.confRepo.GetReadTimeout() = 60 * 10
+	//}
+	//if this.confRepo.GetWriteTimeout() == 0 {
+	//	this.confRepo.GetWriteTimeout() = 60 * 10
+	//}
+	//if this.confRepo.GetSyncWorker() == 0 {
+	//	this.confRepo.GetSyncWorker() = 200
+	//}
+	//if this.confRepo.GetUploadWorker() == 0 {
+	//	this.confRepo.GetUploadWorker() = runtime.NumCPU() + 4
+	//	if runtime.NumCPU() < 4 {
+	//		this.confRepo.GetUploadWorker() = 8
+	//	}
+	//}
+	//if this.confRepo.GetUploadQueueSize() == 0 {
+	//	this.confRepo.GetUploadQueueSize() = 200
+	//}
+	//if this.confRepo.GetRetryCount() == 0 {
+	//	this.confRepo.GetRetryCount() = 3
+	//}
+	//if this.confRepo.GetSyncDelay() == 0 {
+	//	this.confRepo.GetSyncDelay() = 60
+	//}
+	//if this.confRepo.GetWatchChanSize() == 0 {
+	//	this.confRepo.GetWatchChanSize() = 100000
+	//}
 }
 
 func (this *Server) Start() {
