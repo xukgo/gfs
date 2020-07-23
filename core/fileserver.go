@@ -18,7 +18,6 @@ import (
 	"os"
 	"os/signal"
 	"path"
-	"regexp"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -87,7 +86,7 @@ type Server struct {
 	confRepo       iService.IConfigRepo
 }
 
-func NewServer() *Server {
+func NewServer(confRepo iService.IConfigRepo) *Server {
 	var (
 		//Singleton *Server
 		err error
@@ -107,6 +106,7 @@ func NewServer() *Server {
 		queueFileLog:   make(chan *model.FileLog, constDefine.CONST_QUEUE_SIZE),
 		queueUpload:    make(chan model.WrapReqResp, 100),
 		sumMap:         goutil.NewCommonMap(365 * 3),
+		confRepo:       confRepo,
 	}
 
 	defaultTransport := &http.Transport{
@@ -1615,38 +1615,7 @@ func (this *Server) initTus() {
 }
 
 func (this *Server) initComponent(isReload bool) {
-	var (
-		ip string
-	)
-	if ip = os.Getenv("GFS_IP"); ip == "" {
-		ip = this.util.GetPulicIP()
-	}
-	if this.confRepo.GetHost() == "" {
-		if len(strings.Split(this.confRepo.GetAddr(), ":")) == 2 {
-			Singleton.host = fmt.Sprintf("http://%s:%s", ip, strings.Split(this.confRepo.GetAddr(), ":")[1])
-			this.confRepo.GetHost() = Singleton.host
-		}
-	} else {
-		if strings.HasPrefix(this.confRepo.GetHost(), "http") {
-			Singleton.host = this.confRepo.GetHost()
-		} else {
-			Singleton.host = "http://" + this.confRepo.GetHost()
-		}
-	}
-	ex, _ := regexp.Compile("\\d+\\.\\d+\\.\\d+\\.\\d+")
-	var peers []string
-	for _, peer := range this.confRepo.GetPeers() {
-		if this.util.Contains(ip, ex.FindAllString(peer, -1)) ||
-			this.util.Contains("127.0.0.1", ex.FindAllString(peer, -1)) {
-			continue
-		}
-		if strings.HasPrefix(peer, "http") {
-			peers = append(peers, peer)
-		} else {
-			peers = append(peers, "http://"+peer)
-		}
-	}
-	this.confRepo.GetPeers() = peers
+	Singleton.host = this.confRepo.GetHost()
 	if !isReload {
 		this.FormatStatInfo()
 		if this.confRepo.GetEnableTus() {
@@ -1659,33 +1628,6 @@ func (this *Server) initComponent(isReload bool) {
 			this.sceneMap.Put(kv[0], kv[1])
 		}
 	}
-	//if this.confRepo.GetReadTimeout() == 0 {
-	//	this.confRepo.GetReadTimeout() = 60 * 10
-	//}
-	//if this.confRepo.GetWriteTimeout() == 0 {
-	//	this.confRepo.GetWriteTimeout() = 60 * 10
-	//}
-	//if this.confRepo.GetSyncWorker() == 0 {
-	//	this.confRepo.GetSyncWorker() = 200
-	//}
-	//if this.confRepo.GetUploadWorker() == 0 {
-	//	this.confRepo.GetUploadWorker() = runtime.NumCPU() + 4
-	//	if runtime.NumCPU() < 4 {
-	//		this.confRepo.GetUploadWorker() = 8
-	//	}
-	//}
-	//if this.confRepo.GetUploadQueueSize() == 0 {
-	//	this.confRepo.GetUploadQueueSize() = 200
-	//}
-	//if this.confRepo.GetRetryCount() == 0 {
-	//	this.confRepo.GetRetryCount() = 3
-	//}
-	//if this.confRepo.GetSyncDelay() == 0 {
-	//	this.confRepo.GetSyncDelay() = 60
-	//}
-	//if this.confRepo.GetWatchChanSize() == 0 {
-	//	this.confRepo.GetWatchChanSize() = 100000
-	//}
 }
 
 func (this *Server) Start() {
@@ -1694,7 +1636,7 @@ func (this *Server) Start() {
 			//重试同步失败的文件
 			this.CheckFileAndSendToPeer(this.util.GetToDay(), constDefine.CONST_Md5_ERROR_FILE_NAME, false)
 			//fmt.Println("CheckFileAndSendToPeer")
-			time.Sleep(time.Second * time.Duration(Config().RefreshInterval))
+			time.Sleep(time.Second * time.Duration(this.confRepo.GetRefreshInterval()))
 			//this.util.RemoveEmptyDir(STORE_DIR)
 		}
 	}()
@@ -1768,13 +1710,17 @@ func (this *Server) Start() {
 	http.HandleFunc("/"+this.confRepo.GetGroup()+"/", this.Download)
 	fmt.Println("Listen on " + this.confRepo.GetAddr())
 	if this.confRepo.GetEnableHttps() {
-		err := http.ListenAndServeTLS(this.confRepo.GetAddr(), SERVER_CRT_FILE_NAME, SERVER_KEY_FILE_NAME, new(HttpHandler))
+		httpHandler := new(HttpHandler)
+		httpHandler.EnableCrossOrigin = this.confRepo.GetEnableCrossOrigin()
+		err := http.ListenAndServeTLS(this.confRepo.GetAddr(), SERVER_CRT_FILE_NAME, SERVER_KEY_FILE_NAME, httpHandler)
 		log.Error(err)
 		fmt.Println(err)
 	} else {
+		httpHandler := new(HttpHandler)
+		httpHandler.EnableCrossOrigin = this.confRepo.GetEnableCrossOrigin()
 		srv := &http.Server{
 			Addr:              this.confRepo.GetAddr(),
-			Handler:           new(HttpHandler),
+			Handler:           httpHandler,
 			ReadTimeout:       time.Duration(this.confRepo.GetReadTimeout()) * time.Second,
 			ReadHeaderTimeout: time.Duration(this.confRepo.GetReadHeaderTimeout()) * time.Second,
 			WriteTimeout:      time.Duration(this.confRepo.GetWriteTimeout()) * time.Second,

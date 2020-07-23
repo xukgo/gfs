@@ -20,7 +20,7 @@ type Repo struct {
 	DownloadTokenExpire  int      `json:"download_token_expire"`
 	QueueSize            int      `json:"queue_size"`
 	AutoRepair           bool     `json:"auto_repair"`
-	Host                 string   `json:"host"`
+	Host                 string   `json:"host"` //http:ip:port/url
 	FileSumArithmetic    string   `json:"file_sum_arithmetic"`
 	PeerId               string   `json:"peer_id"`
 	SupportGroupManage   bool     `json:"support_group_manage"`

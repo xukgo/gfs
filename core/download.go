@@ -135,7 +135,7 @@ func (this *Server) DownloadFromPeer(peer string, fileInfo *model.FileInfo) {
 		return
 	}
 	_ = sum
-	//if Config().EnableDistinctFile {
+	//if this.confRepo.GetEnableDistinctFile() {
 	//	//DistinctFile
 	//	if sum, err = this.util.GetFileSumByName(fpathTmp, this.confRepo.GetFileSumArithmetic()); err != nil {
 	//		log.Error(err)

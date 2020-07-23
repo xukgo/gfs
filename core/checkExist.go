@@ -50,7 +50,7 @@ func (this *Server) CheckFileExist(w http.ResponseWriter, r *http.Request) {
 			fi, err = os.Stat(fpath)
 			if err == nil {
 				sum := this.util.MD5(fpath)
-				//if Config().EnableDistinctFile {
+				//if this.confRepo.GetEnableDistinctFile() {
 				//	sum, err = this.util.GetFileSumByName(fpath, this.confRepo.GetFileSumArithmetic())
 				//	if err != nil {
 				//		log.Error(err)

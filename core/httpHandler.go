@@ -9,9 +9,10 @@ import (
 )
 
 type HttpHandler struct {
+	EnableCrossOrigin bool
 }
 
-func (HttpHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+func (this *HttpHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	status_code := "200"
 	defer func(t time.Time) {
 		logStr := fmt.Sprintf("[Access] %s | %s | %s | %s | %s |%s",
@@ -35,7 +36,7 @@ func (HttpHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 			log.Error(string(buff))
 		}
 	}()
-	if Config().EnableCrossOrigin {
+	if this.EnableCrossOrigin {
 		Singleton.CrossOrigin(res, req)
 	}
 	http.DefaultServeMux.ServeHTTP(res, req)

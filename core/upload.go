@@ -55,7 +55,7 @@ func (this *Server) upload(w http.ResponseWriter, r *http.Request) {
 		msg          string
 	)
 	output = r.FormValue("output")
-	if Config().EnableCrossOrigin {
+	if this.confRepo.GetEnableCrossOrigin() {
 		this.CrossOrigin(w, r)
 		if r.Method == http.MethodOptions {
 			return
@@ -76,7 +76,7 @@ func (this *Server) upload(w http.ResponseWriter, r *http.Request) {
 		md5sum = r.FormValue("md5")
 		fileName = r.FormValue("filename")
 		output = r.FormValue("output")
-		if Config().EnableCustomPath {
+		if this.confRepo.GetEnableCustomPath() {
 			fileInfo.Path = r.FormValue("path")
 			fileInfo.Path = strings.Trim(fileInfo.Path, "/")
 		}
@@ -127,7 +127,7 @@ func (this *Server) upload(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(this.util.JsonEncodePretty(result)))
 			return
 		}
-		if Config().EnableDistinctFile {
+		if this.confRepo.GetEnableDistinctFile() {
 			if v, _ := this.GetFileInfoFromLevelDB(fileInfo.Md5); v != nil && v.Md5 != "" {
 				fileResult = this.BuildFileResult(v, r)
 				if this.confRepo.GetRenameFile() {
@@ -163,11 +163,11 @@ func (this *Server) upload(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(this.util.JsonEncodePretty(result)))
 			return
 		}
-		if !Config().EnableDistinctFile {
+		if !this.confRepo.GetEnableDistinctFile() {
 			// bugfix filecount stat
 			fileInfo.Md5 = this.util.MD5(this.GetFilePathByInfo(&fileInfo, false))
 		}
-		if Config().EnableMergeSmallFile && fileInfo.Size < constDefine.CONST_SMALL_FILE_SIZE {
+		if this.confRepo.GetEnableMergeSmallFile() && fileInfo.Size < constDefine.CONST_SMALL_FILE_SIZE {
 			if err = this.SaveSmallFile(&fileInfo); err != nil {
 				log.Error(err)
 				result.Message = err.Error()
@@ -242,7 +242,7 @@ func (this *Server) SaveUploadFile(file multipart.File, header *multipart.FileHe
 	defer file.Close()
 	_, fileInfo.Name = filepath.Split(header.Filename)
 	// bugfix for ie upload file contain fullpath
-	if len(Config().Extensions) > 0 && !this.util.Contains(path.Ext(fileInfo.Name), Config().Extensions) {
+	if len(this.confRepo.GetExtensions()) > 0 && !this.util.Contains(path.Ext(fileInfo.Name), this.confRepo.GetExtensions()) {
 		return fileInfo, errors.New("(error)file extension mismatch")
 	}
 	if this.confRepo.GetRenameFile() {
@@ -273,7 +273,7 @@ func (this *Server) SaveUploadFile(file multipart.File, header *multipart.FileHe
 	if fileInfo.ReName != "" {
 		outPath = fmt.Sprintf(folder+"/%s", fileInfo.ReName)
 	}
-	if this.util.FileExists(outPath) && Config().EnableDistinctFile {
+	if this.util.FileExists(outPath) && this.confRepo.GetEnableDistinctFile() {
 		for i := 0; i < 10000; i++ {
 			outPath = fmt.Sprintf(folder+"/%d_%s", i, filepath.Base(header.Filename))
 			fileInfo.Name = fmt.Sprintf("%d_%s", i, header.Filename)
@@ -305,7 +305,7 @@ func (this *Server) SaveUploadFile(file multipart.File, header *multipart.FileHe
 		return fileInfo, errors.New("(error)file uncomplete")
 	}
 	v := "" // this.util.GetFileSum(outFile, this.confRepo.GetFileSumArithmetic())
-	if Config().EnableDistinctFile {
+	if this.confRepo.GetEnableDistinctFile() {
 		v = this.util.GetFileSum(outFile, this.confRepo.GetFileSumArithmetic())
 	} else {
 		v = this.util.MD5(this.GetFilePathByInfo(fileInfo, false))

@@ -81,4 +81,9 @@ func afterFillJson(repo *Repo) {
 	if repo.WatchChanSize == 0 {
 		repo.WatchChanSize = 100000
 	}
+
+	if repo.Host == "" {
+		//todo 自动生成局域网内到http url
+		repo.Host = "http://ip:" + repo.Addr
+	}
 }

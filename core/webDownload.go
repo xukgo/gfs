@@ -41,7 +41,7 @@ func (this *Server) Download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if Config().EnableCrossOrigin {
+	if this.confRepo.GetEnableCrossOrigin() {
 		this.CrossOrigin(w, r)
 	}
 	fullpath, smallPath = this.GetFilePathFromRequest(w, r)
@@ -50,7 +50,7 @@ func (this *Server) Download(w http.ResponseWriter, r *http.Request) {
 			this.DownloadNotFound(w, r)
 			return
 		}
-		if !Config().ShowDir && fi.IsDir() {
+		if !this.confRepo.GetShowDir() && fi.IsDir() {
 			w.Write([]byte("list dir deny"))
 			return
 		}
@@ -81,7 +81,7 @@ func (this *Server) DownloadSmallFileByURI(w http.ResponseWriter, r *http.Reques
 	r.ParseForm()
 	isDownload = true
 	if r.FormValue("download") == "" {
-		isDownload = Config().DefaultDownload
+		isDownload = this.confRepo.GetDefaultDownload()
 	}
 	if r.FormValue("download") == "0" {
 		isDownload = false
@@ -127,7 +127,7 @@ func (this *Server) DownloadNormalFileByURI(w http.ResponseWriter, r *http.Reque
 	r.ParseForm()
 	isDownload = true
 	if r.FormValue("download") == "" {
-		isDownload = Config().DefaultDownload
+		isDownload = this.confRepo.GetDefaultDownload()
 	}
 	if r.FormValue("download") == "0" {
 		isDownload = false
@@ -170,7 +170,7 @@ func (this *Server) DownloadNotFound(w http.ResponseWriter, r *http.Request) {
 	fullpath, smallPath = this.GetFilePathFromRequest(w, r)
 	isDownload = true
 	if r.FormValue("download") == "" {
-		isDownload = Config().DefaultDownload
+		isDownload = this.confRepo.GetDefaultDownload()
 	}
 	if r.FormValue("download") == "0" {
 		isDownload = false
@@ -263,19 +263,19 @@ func (this *Server) CheckDownloadAuth(w http.ResponseWriter, r *http.Request) (b
 		}
 		return true
 	}
-	if Config().EnableDownloadAuth && this.confRepo.GetAuthUrl() != "" && !this.IsPeer(r) && !this.CheckAuth(w, r) {
+	if this.confRepo.GetEnableDownloadAuth() && this.confRepo.GetAuthUrl() != "" && !this.IsPeer(r) && !this.CheckAuth(w, r) {
 		return false, errors.New("auth fail")
 	}
-	if Config().DownloadUseToken && !this.IsPeer(r) {
+	if this.confRepo.GetDownloadUseToken() && !this.IsPeer(r) {
 		token = r.FormValue("token")
 		timestamp = r.FormValue("timestamp")
 		if token == "" || timestamp == "" {
 			return false, errors.New("unvalid request")
 		}
 		maxTimestamp = time.Now().Add(time.Second *
-			time.Duration(Config().DownloadTokenExpire)).Unix()
+			time.Duration(this.confRepo.GetDownloadTokenExpire())).Unix()
 		minTimestamp = time.Now().Add(-time.Second *
-			time.Duration(Config().DownloadTokenExpire)).Unix()
+			time.Duration(this.confRepo.GetDownloadTokenExpire())).Unix()
 		if ts, err = strconv.ParseInt(timestamp, 10, 64); err != nil {
 			return false, errors.New("unvalid timestamp")
 		}

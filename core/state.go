@@ -252,11 +252,11 @@ func (this *Server) Status(w http.ResponseWriter, r *http.Request) {
 	}
 	sts["Fs.AutoRepair"] = this.confRepo.GetAutoRepair()
 	sts["Fs.QueueUpload"] = len(this.queueUpload)
-	sts["Fs.RefreshInterval"] = Config().RefreshInterval
+	sts["Fs.RefreshInterval"] = this.confRepo.GetRefreshInterval()
 	sts["Fs.Peers"] = this.confRepo.GetPeers()
 	sts["Fs.Local"] = this.host
 	sts["Fs.FileStats"] = this.GetStat()
-	sts["Fs.ShowDir"] = Config().ShowDir
+	sts["Fs.ShowDir"] = this.confRepo.GetShowDir()
 	sts["Sys.NumGoroutine"] = runtime.NumGoroutine()
 	sts["Sys.NumCpu"] = runtime.NumCPU()
 	sts["Sys.Alloc"] = memStat.Alloc
