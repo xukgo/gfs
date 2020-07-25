@@ -44,4 +44,20 @@ type IConfigRepo interface {
 	GetRetryCount() int
 	GetSyncDelay() int64
 	GetWatchChanSize() int
+
+	GetDockerDir() string
+	GetStoreDir() string
+	GetConfDir() string
+	GetLogDir() string
+	GetDataDir() string
+	GetStaticDir() string
+	GetLargeDirName() string
+	GetLargeDir() string
+	GetLevelDbFileName() string
+	GetLogLevelDbFileName() string
+	GetStatFileName() string
+	GetConfFileName() string
+	GetServerCrtFileName() string
+	GetServerKeyFileName() string
+	GetSearchFileName() string
 }

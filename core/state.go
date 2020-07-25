@@ -63,8 +63,8 @@ func (this *Server) FormatStatInfo() {
 		count int64
 		stat  map[string]interface{}
 	)
-	if this.util.FileExists(STAT_FILE_NAME) {
-		if data, err = this.util.ReadBinFile(STAT_FILE_NAME); err != nil {
+	if this.util.FileExists(this.confRepo.GetStatFileName()) {
+		if data, err = this.util.ReadBinFile(this.confRepo.GetStatFileName()); err != nil {
 			log.Error(err)
 		} else {
 			if err = json.Unmarshal(data, &stat); err != nil {

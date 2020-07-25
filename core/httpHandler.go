@@ -24,7 +24,8 @@ func (this *HttpHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 			status_code,
 			req.RequestURI,
 		)
-		logacc.Info(logStr)
+		//logacc.Info(logStr)
+		log.Info(logStr)
 	}(time.Now())
 	defer func() {
 		if err := recover(); err != nil {

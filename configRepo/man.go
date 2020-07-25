@@ -2,10 +2,13 @@ package configRepo
 
 import (
 	"fmt"
+	log "github.com/sjqzhang/seelog"
 	"github.com/xukgo/gfs/constDefine"
 	"github.com/xukgo/gsaber/utils/randomUtil"
 	"io/ioutil"
+	"os"
 	"runtime"
+	"strings"
 	"sync"
 )
 
@@ -85,5 +88,45 @@ func afterFillJson(repo *Repo) {
 	if repo.Host == "" {
 		//todo 自动生成局域网内到http url
 		repo.Host = "http://ip:" + repo.Addr
+	}
+
+	repo.DockerDir = os.Getenv("GFS_DIR")
+	if repo.DockerDir != "" {
+		if !strings.HasSuffix(repo.DockerDir, "/") {
+			repo.DockerDir = repo.DockerDir + "/"
+		}
+	}
+	repo.StoreDir = repo.DockerDir + constDefine.STORE_DIR_NAME
+	repo.ConfDir = repo.DockerDir + constDefine.CONF_DIR_NAME
+	repo.DataDir = repo.DockerDir + constDefine.DATA_DIR_NAME
+	repo.LogDir = repo.DockerDir + constDefine.LOG_DIR_NAME
+	repo.StaticDir = repo.DockerDir + constDefine.STATIC_DIR_NAME
+	repo.LargeDirName = "haystack"
+	repo.LargeDir = repo.StoreDir + "/" + repo.LargeDirName
+	repo.LevelDbFileName = repo.DataDir + "/fileserver.db"
+	repo.LogLevelDbFileName = repo.DataDir + "/log.db"
+	repo.StatFileName = repo.DataDir + "/stat.json"
+	repo.ConfFileName = repo.ConfDir + "/cfg.json"
+	repo.ServerCrtFileName = repo.ConfDir + "/server.crt"
+	repo.ServerKeyFileName = repo.ConfDir + "/server.key"
+	repo.SearchFileName = repo.DataDir + "/search.txt"
+
+	folders := []string{repo.DataDir, repo.StoreDir, repo.ConfDir, repo.StaticDir}
+	for _, folder := range folders {
+		os.MkdirAll(folder, 0775)
+	}
+	logAccessConfigStr := strings.Replace(constDefine.LOG_ACCESS_CONF_TEMPLATE, "{DOCKER_DIR}", repo.DockerDir, -1)
+	logConfigStr := strings.Replace(constDefine.LOG_CONF_TEMPLATE, "{DOCKER_DIR}", repo.DockerDir, -1)
+	if logger, err := log.LoggerFromConfigAsBytes([]byte(logConfigStr)); err != nil {
+		panic(err)
+	} else {
+		log.ReplaceLogger(logger)
+	}
+	if _logacc, err := log.LoggerFromConfigAsBytes([]byte(logAccessConfigStr)); err == nil {
+		//logacc := _logacc
+		_ = _logacc
+		log.Info("succes init log access")
+	} else {
+		log.Error(err.Error())
 	}
 }

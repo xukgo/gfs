@@ -18,6 +18,7 @@ const (
 	CONST_REMOME_Md5_FILE_NAME     = "removes.md5"
 	CONST_SMALL_FILE_SIZE          = 1024 * 1024
 	CONST_MESSAGE_CLUSTER_IP       = "Can only be called by the cluster ip or 127.0.0.1 or admin_ips(cfg.json),current ip:%s"
+	CONST_UPLOAD_COUNTER_KEY       = "__CONST_UPLOAD_COUNTER_KEY__"
 
 	LOG_CONF_TEMPLATE = `
 <seelog type="asynctimer" asyncinterval="1000" minlevel="trace" maxlevel="error">  

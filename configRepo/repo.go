@@ -45,6 +45,22 @@ type Repo struct {
 	RetryCount           int      `json:"retry_count"`
 	SyncDelay            int64    `json:"sync_delay"`
 	WatchChanSize        int      `json:"watch_chan_size"`
+
+	DockerDir          string `json:"-"`
+	StoreDir           string `json:"-"`
+	ConfDir            string `json:"-"`
+	LogDir             string `json:"-"`
+	DataDir            string `json:"-"`
+	StaticDir          string `json:"-"`
+	LargeDirName       string `json:"-"`
+	LargeDir           string `json:"-"`
+	LevelDbFileName    string `json:"-"`
+	LogLevelDbFileName string `json:"-"`
+	StatFileName       string `json:"-"`
+	ConfFileName       string `json:"-"`
+	ServerCrtFileName  string `json:"-"`
+	ServerKeyFileName  string `json:"-"`
+	SearchFileName     string `json:"-"`
 }
 
 func (this *Repo) ToJson() []byte {
@@ -183,3 +199,19 @@ func (this *Repo) GetSyncDelay() int64 {
 func (this *Repo) GetWatchChanSize() int {
 	return this.WatchChanSize
 }
+
+func (this *Repo) GetDockerDir() string          { return this.DockerDir }
+func (this *Repo) GetStoreDir() string           { return this.StoreDir }
+func (this *Repo) GetConfDir() string            { return this.ConfDir }
+func (this *Repo) GetLogDir() string             { return this.LogDir }
+func (this *Repo) GetDataDir() string            { return this.DataDir }
+func (this *Repo) GetStaticDir() string          { return this.StaticDir }
+func (this *Repo) GetLargeDirName() string       { return this.LargeDirName }
+func (this *Repo) GetLargeDir() string           { return this.LargeDir }
+func (this *Repo) GetLevelDbFileName() string    { return this.LevelDbFileName }
+func (this *Repo) GetLogLevelDbFileName() string { return this.LogLevelDbFileName }
+func (this *Repo) GetStatFileName() string       { return this.StatFileName }
+func (this *Repo) GetConfFileName() string       { return this.ConfFileName }
+func (this *Repo) GetServerCrtFileName() string  { return this.ServerCrtFileName }
+func (this *Repo) GetServerKeyFileName() string  { return this.ServerKeyFileName }
+func (this *Repo) GetSearchFileName() string     { return this.SearchFileName }

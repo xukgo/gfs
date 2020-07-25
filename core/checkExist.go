@@ -29,9 +29,9 @@ func (this *Server) CheckFileExist(w http.ResponseWriter, r *http.Request) {
 			w.Write(data)
 			return
 		}
-		fpath = DOCKER_DIR + fileInfo.Path + "/" + fileInfo.Name
+		fpath = this.confRepo.GetDockerDir() + fileInfo.Path + "/" + fileInfo.Name
 		if fileInfo.ReName != "" {
-			fpath = DOCKER_DIR + fileInfo.Path + "/" + fileInfo.ReName
+			fpath = this.confRepo.GetDockerDir() + fileInfo.Path + "/" + fileInfo.ReName
 		}
 		if this.util.IsExist(fpath) {
 			if data, err = json.Marshal(fileInfo); err == nil {
@@ -99,9 +99,9 @@ func (this *Server) CheckFilesExist(w http.ResponseWriter, r *http.Request) {
 				fileInfos = append(fileInfos, fileInfo)
 				continue
 			}
-			fpath = DOCKER_DIR + fileInfo.Path + "/" + fileInfo.Name
+			fpath = this.confRepo.GetDockerDir() + fileInfo.Path + "/" + fileInfo.Name
 			if fileInfo.ReName != "" {
-				fpath = DOCKER_DIR + fileInfo.Path + "/" + fileInfo.ReName
+				fpath = this.confRepo.GetDockerDir() + fileInfo.Path + "/" + fileInfo.ReName
 			}
 			if this.util.IsExist(fpath) {
 				if data, err = json.Marshal(fileInfo); err == nil {

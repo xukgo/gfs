@@ -51,15 +51,15 @@ func (this *Server) DownloadFromPeer(peer string, fileInfo *model.FileInfo) {
 		}
 	}
 	if _, err = os.Stat(fileInfo.Path); err != nil {
-		os.MkdirAll(DOCKER_DIR+fileInfo.Path, 0775)
+		os.MkdirAll(this.confRepo.GetDockerDir()+fileInfo.Path, 0775)
 	}
 	//fmt.Println("downloadFromPeer",fileInfo)
 	p := strings.Replace(fileInfo.Path, constDefine.STORE_DIR_NAME+"/", "", 1)
 	//filename=this.util.UrlEncode(filename)
 	downloadUrl = peer + "/" + this.confRepo.GetGroup() + "/" + p + "/" + filename
 	log.Info("DownloadFromPeer: ", downloadUrl)
-	fpath = DOCKER_DIR + fileInfo.Path + "/" + filename
-	fpathTmp = DOCKER_DIR + fileInfo.Path + "/" + fmt.Sprintf("%s_%s", "tmp_", filename)
+	fpath = this.confRepo.GetDockerDir() + fileInfo.Path + "/" + filename
+	fpathTmp = this.confRepo.GetDockerDir() + fileInfo.Path + "/" + fmt.Sprintf("%s_%s", "tmp_", filename)
 	timeout := fileInfo.Size/1024/1024/1 + 20
 	if this.confRepo.GetSyncTimeout() > 0 {
 		timeout = this.confRepo.GetSyncTimeout()

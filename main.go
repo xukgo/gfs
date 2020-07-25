@@ -3,10 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/xukgo/gfs/configRepo"
-	"github.com/xukgo/gfs/core"
-	"github.com/xukgo/gsaber/utils/fileUtil"
+	log "github.com/sjqzhang/seelog"
+	"github.com/xukgo/gfs/orchestrator"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 var (
@@ -23,12 +24,21 @@ func main() {
 		os.Exit(0)
 	}
 
-	configUrl := fileUtil.GetAbsUrl("conf/cfg.json")
-	err := configRepo.InitRepo(configUrl)
+	checkExecDir()
+	err := orchestrator.Start()
 	if err != nil {
-		return
+		os.Exit(-1)
 	}
+}
 
-	core.InitConfig(configRepo.GetSingleton().GetSupportGroupManage(), configRepo.GetSingleton().Group)
-	core.Singleton.Start()
+func checkExecDir() {
+	appDir, e1 := filepath.Abs(filepath.Dir(os.Args[0]))
+	curDir, e2 := filepath.Abs(".")
+	if e1 == nil && e2 == nil && appDir != curDir && !strings.Contains(appDir, "go-build") {
+		msg := fmt.Sprintf("please change directory to '%s' start fileserver\n", appDir)
+		msg = msg + fmt.Sprintf("请切换到 '%s' 目录启动 fileserver ", appDir)
+		log.Warn(msg)
+		fmt.Println(msg)
+		os.Exit(1)
+	}
 }

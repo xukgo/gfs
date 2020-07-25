@@ -21,7 +21,7 @@ func (this *Server) Upload(w http.ResponseWriter, r *http.Request) {
 		this.upload(w, r)
 		return
 	}
-	folder = STORE_DIR + "/_tmp/" + time.Now().Format("20060102")
+	folder = this.confRepo.GetStoreDir() + "/_tmp/" + time.Now().Format("20060102")
 	if !this.util.FileExists(folder) {
 		if err = os.MkdirAll(folder, 0777); err != nil {
 			log.Error(err)

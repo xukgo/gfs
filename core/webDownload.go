@@ -313,10 +313,11 @@ func (this *Server) GetFilePathFromRequest(w http.ResponseWriter, r *http.Reques
 		fullpath = r.RequestURI[len(this.confRepo.GetGroup())+2 : len(r.RequestURI)]
 	}
 	fullpath = strings.Split(fullpath, "?")[0] // just path
-	fullpath = DOCKER_DIR + constDefine.STORE_DIR_NAME + "/" + fullpath
-	prefix = "/" + LARGE_DIR_NAME + "/"
+	fullpath = this.confRepo.GetDockerDir() + constDefine.STORE_DIR_NAME + "/" + fullpath
 	if this.confRepo.GetSupportGroupManage() {
-		prefix = "/" + this.confRepo.GetGroup() + "/" + LARGE_DIR_NAME + "/"
+		prefix = "/" + this.confRepo.GetGroup() + "/" + this.confRepo.GetLargeDirName() + "/"
+	} else {
+		prefix = "/" + this.confRepo.GetLargeDirName() + "/"
 	}
 	if strings.HasPrefix(r.RequestURI, prefix) {
 		smallPath = fullpath //notice order

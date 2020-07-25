@@ -22,11 +22,11 @@ func (this *Server) ConsumerUpload() {
 		for {
 			wr := <-this.queueUpload
 			this.upload(*wr.W, wr.R)
-			this.rtMap.AddCountInt64(CONST_UPLOAD_COUNTER_KEY, wr.R.ContentLength)
-			if v, ok := this.rtMap.GetValue(CONST_UPLOAD_COUNTER_KEY); ok {
+			this.rtMap.AddCountInt64(constDefine.CONST_UPLOAD_COUNTER_KEY, wr.R.ContentLength)
+			if v, ok := this.rtMap.GetValue(constDefine.CONST_UPLOAD_COUNTER_KEY); ok {
 				if v.(int64) > 1*1024*1024*1024 {
 					var _v int64
-					this.rtMap.Put(CONST_UPLOAD_COUNTER_KEY, _v)
+					this.rtMap.Put(constDefine.CONST_UPLOAD_COUNTER_KEY, _v)
 					debug.FreeOSMemory()
 				}
 			}
@@ -131,9 +131,9 @@ func (this *Server) upload(w http.ResponseWriter, r *http.Request) {
 			if v, _ := this.GetFileInfoFromLevelDB(fileInfo.Md5); v != nil && v.Md5 != "" {
 				fileResult = this.BuildFileResult(v, r)
 				if this.confRepo.GetRenameFile() {
-					os.Remove(DOCKER_DIR + fileInfo.Path + "/" + fileInfo.ReName)
+					os.Remove(this.confRepo.GetDockerDir() + fileInfo.Path + "/" + fileInfo.ReName)
 				} else {
-					os.Remove(DOCKER_DIR + fileInfo.Path + "/" + fileInfo.Name)
+					os.Remove(this.confRepo.GetDockerDir() + fileInfo.Path + "/" + fileInfo.Name)
 				}
 				if output == "json" || output == "json2" {
 					if output == "json2" {
@@ -253,15 +253,15 @@ func (this *Server) SaveUploadFile(file multipart.File, header *multipart.FileHe
 		folder = fmt.Sprintf(folder+"/%s", this.confRepo.GetPeerId())
 	}
 	if fileInfo.Scene != "" {
-		folder = fmt.Sprintf(STORE_DIR+"/%s/%s", fileInfo.Scene, folder)
+		folder = fmt.Sprintf(this.confRepo.GetStoreDir()+"/%s/%s", fileInfo.Scene, folder)
 	} else {
-		folder = fmt.Sprintf(STORE_DIR+"/%s", folder)
+		folder = fmt.Sprintf(this.confRepo.GetStoreDir()+"/%s", folder)
 	}
 	if fileInfo.Path != "" {
-		if strings.HasPrefix(fileInfo.Path, STORE_DIR) {
+		if strings.HasPrefix(fileInfo.Path, this.confRepo.GetStoreDir()) {
 			folder = fileInfo.Path
 		} else {
-			folder = STORE_DIR + "/" + fileInfo.Path
+			folder = this.confRepo.GetStoreDir() + "/" + fileInfo.Path
 		}
 	}
 	if !this.util.FileExists(folder) {
@@ -312,7 +312,7 @@ func (this *Server) SaveUploadFile(file multipart.File, header *multipart.FileHe
 	}
 	fileInfo.Md5 = v
 	//fileInfo.Path = folder //strings.Replace( folder,DOCKER_DIR,"",1)
-	fileInfo.Path = strings.Replace(folder, DOCKER_DIR, "", 1)
+	fileInfo.Path = strings.Replace(folder, this.confRepo.GetDockerDir(), "", 1)
 	fileInfo.Peers = append(fileInfo.Peers, this.host)
 	//fmt.Println("upload",fileInfo)
 	return fileInfo, nil
@@ -335,8 +335,8 @@ func (this *Server) SaveSmallFile(fileInfo *model.FileInfo) error {
 	if fileInfo.ReName != "" {
 		filename = fileInfo.ReName
 	}
-	fpath = DOCKER_DIR + fileInfo.Path + "/" + filename
-	largeDir = LARGE_DIR + "/" + this.confRepo.GetPeerId()
+	fpath = this.confRepo.GetDockerDir() + fileInfo.Path + "/" + filename
+	largeDir = this.confRepo.GetLargeDir() + "/" + this.confRepo.GetPeerId()
 	if !this.util.FileExists(largeDir) {
 		os.MkdirAll(largeDir, 0775)
 	}
@@ -372,7 +372,7 @@ func (this *Server) SaveSmallFile(fileInfo *model.FileInfo) error {
 		}
 		srcFile.Close()
 		os.Remove(fpath)
-		fileInfo.Path = strings.Replace(largeDir, DOCKER_DIR, "", 1)
+		fileInfo.Path = strings.Replace(largeDir, this.confRepo.GetDockerDir(), "", 1)
 	}
 	return nil
 }

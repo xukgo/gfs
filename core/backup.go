@@ -97,11 +97,11 @@ func (this *Server) BackUpMetaDataByDate(date string) {
 		metaFileName string
 		fi           os.FileInfo
 	)
-	logFileName = DATA_DIR + "/" + date + "/" + constDefine.CONST_FILE_Md5_FILE_NAME
+	logFileName = this.confRepo.GetDataDir() + "/" + date + "/" + constDefine.CONST_FILE_Md5_FILE_NAME
 	this.lockMap.LockKey(logFileName)
 	defer this.lockMap.UnLockKey(logFileName)
-	metaFileName = DATA_DIR + "/" + date + "/" + "meta.data"
-	os.MkdirAll(DATA_DIR+"/"+date, 0775)
+	metaFileName = this.confRepo.GetDataDir() + "/" + date + "/" + "meta.data"
+	os.MkdirAll(this.confRepo.GetDataDir()+"/"+date, 0775)
 	if this.util.IsExist(logFileName) {
 		os.Remove(logFileName)
 	}

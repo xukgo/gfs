@@ -51,13 +51,13 @@ func (this *Server) RepairFileInfoFromFile() {
 					continue
 				}
 				file_path = strings.Replace(file_path, "\\", "/", -1)
-				if DOCKER_DIR != "" {
-					file_path = strings.Replace(file_path, DOCKER_DIR, "", 1)
+				if this.confRepo.GetDockerDir() != "" {
+					file_path = strings.Replace(file_path, this.confRepo.GetDockerDir(), "", 1)
 				}
 				if pathPrefix != "" {
 					file_path = strings.Replace(file_path, pathPrefix, constDefine.STORE_DIR_NAME, 1)
 				}
-				if strings.HasPrefix(file_path, constDefine.STORE_DIR_NAME+"/"+LARGE_DIR_NAME) {
+				if strings.HasPrefix(file_path, this.confRepo.GetLargeDir()) {
 					log.Info(fmt.Sprintf("ignore small file file %s", file_path+"/"+fi.Name()))
 					continue
 				}
@@ -91,7 +91,7 @@ func (this *Server) RepairFileInfoFromFile() {
 		}
 		return nil
 	}
-	pathname := STORE_DIR
+	pathname := this.confRepo.GetStoreDir()
 	pathPrefix, err = os.Readlink(pathname)
 	if err == nil {
 		//link
