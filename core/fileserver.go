@@ -1,7 +1,6 @@
 package core
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -16,54 +15,25 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/util"
-	"github.com/xukgo/gfs/configRepo"
 	"github.com/xukgo/gfs/constDefine"
 	"github.com/xukgo/gfs/iService"
 	"github.com/xukgo/gfs/model"
 	"io"
 	"io/ioutil"
 	slog "log"
-	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"os/signal"
 	"path"
 	"runtime/debug"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
-var staticHandler http.Handler
+var staticFileServerHandler http.Handler
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 var Singleton *Server = nil
-
-//var logacc log.LoggerInterface
-
-//var FOLDERS = []string{DATA_DIR, STORE_DIR, CONF_DIR, STATIC_DIR}
-
-var (
-	//logConfigStr       string
-	//logAccessConfigStr string
-	//FileName                 string
-	//ptr                      unsafe.Pointer
-	//STORE_DIR  = constDefine.STORE_DIR_NAME
-	CONF_DIR = constDefine.CONF_DIR_NAME
-	//LOG_DIR    = constDefine.LOG_DIR_NAME
-	//DATA_DIR   = constDefine.DATA_DIR_NAME
-	STATIC_DIR = constDefine.STATIC_DIR_NAME
-	//LARGE_DIR_NAME        = "haystack"
-	//LARGE_DIR             = STORE_DIR + "/haystack"
-	//LEVELDB_FILE_NAME     = DATA_DIR + "/fileserver.db"
-	//LOG_LEVELDB_FILE_NAME = DATA_DIR + "/log.db"
-	//STAT_FILE_NAME = DATA_DIR + "/stat.json"
-	//CONF_FILE_NAME = CONF_DIR + "/cfg.json"
-	//SERVER_CRT_FILE_NAME  = CONF_DIR + "/server.crt"
-	//SERVER_KEY_FILE_NAME  = CONF_DIR + "/server.key"
-	//SEARCH_FILE_NAME      = DATA_DIR + "/search.txt"
-)
 
 type Server struct {
 	ldb            *leveldb.DB
@@ -144,6 +114,7 @@ func NewServer(confRepo iService.IConfigRepo) *Server {
 		panic(err)
 
 	}
+	Singleton.RegisterExit()
 	return Singleton
 }
 func (this *Server) GetServerURI(r *http.Request) string {
@@ -405,7 +376,8 @@ func (this *Server) Sync(w http.ResponseWriter, r *http.Request) {
 	)
 	r.ParseForm()
 	result.Status = "fail"
-	if !this.IsPeer(r) {
+	clientIP := this.util.GetClientIp(r)
+	if !this.IsPeer(clientIP) {
 		result.Message = "client must be in cluster"
 		w.Write([]byte(this.util.JsonEncodePretty(result)))
 		return
@@ -493,78 +465,7 @@ func (this *Server) RemoveKeyFromLevelDB(key string, db *leveldb.DB) error {
 	err = db.Delete([]byte(key), nil)
 	return err
 }
-func (this *Server) IsPeer(r *http.Request) bool {
-	var (
-		ip    string
-		peer  string
-		bflag bool
-		cidr  *net.IPNet
-		err   error
-	)
-	IsPublicIP := func(IP net.IP) bool {
-		if IP.IsLoopback() || IP.IsLinkLocalMulticast() || IP.IsLinkLocalUnicast() {
-			return false
-		}
-		if ip4 := IP.To4(); ip4 != nil {
-			switch true {
-			case ip4[0] == 10:
-				return false
-			case ip4[0] == 172 && ip4[1] >= 16 && ip4[1] <= 31:
-				return false
-			case ip4[0] == 192 && ip4[1] == 168:
-				return false
-			default:
-				return true
-			}
-		}
-		return false
-	}
-	//return true
-	ip = this.util.GetClientIp(r)
-	if this.util.Contains("0.0.0.0", this.confRepo.GetAdminIps()) {
-		if IsPublicIP(net.ParseIP(ip)) {
-			return false
-		}
-		return true
-	}
-	if this.util.Contains(ip, this.confRepo.GetAdminIps()) {
-		return true
-	}
-	for _, v := range this.confRepo.GetAdminIps() {
-		if strings.Contains(v, "/") {
-			if _, cidr, err = net.ParseCIDR(v); err != nil {
-				log.Error(err)
-				return false
-			}
-			if cidr.Contains(net.ParseIP(ip)) {
-				return true
-			}
-		}
-	}
-	realIp := os.Getenv("GFS_IP")
-	if realIp == "" {
-		realIp = this.util.GetPulicIP()
-	}
-	if ip == "127.0.0.1" || ip == realIp {
-		return true
-	}
-	ip = "http://" + ip
-	bflag = false
-	for _, peer = range this.confRepo.GetPeers() {
-		if strings.HasPrefix(peer, ip) {
-			bflag = true
-			break
-		}
-	}
-	return bflag
-}
-func (this *Server) GetClusterNotPermitMessage(r *http.Request) string {
-	var (
-		message string
-	)
-	message = fmt.Sprintf(constDefine.CONST_MESSAGE_CLUSTER_IP, this.util.GetClientIp(r))
-	return message
-}
+
 func (this *Server) GetMd5sForWeb(w http.ResponseWriter, r *http.Request) {
 	var (
 		date   string
@@ -573,8 +474,9 @@ func (this *Server) GetMd5sForWeb(w http.ResponseWriter, r *http.Request) {
 		lines  []string
 		md5s   []interface{}
 	)
-	if !this.IsPeer(r) {
-		w.Write([]byte(this.GetClusterNotPermitMessage(r)))
+	clientIP := this.util.GetClientIp(r)
+	if !this.IsPeer(clientIP) {
+		w.Write([]byte(this.GetClusterNotPermitMessage(clientIP)))
 		return
 	}
 	date = r.FormValue("date")
@@ -597,7 +499,8 @@ func (this *Server) GetMd5File(w http.ResponseWriter, r *http.Request) {
 		data  []byte
 		err   error
 	)
-	if !this.IsPeer(r) {
+	clientIP := this.util.GetClientIp(r)
+	if !this.IsPeer(clientIP) {
 		return
 	}
 	fpath = this.confRepo.GetDataDir() + "/" + date + "/" + constDefine.CONST_FILE_Md5_FILE_NAME
@@ -675,12 +578,13 @@ func (this *Server) SyncFileInfo(w http.ResponseWriter, r *http.Request) {
 	)
 	r.ParseForm()
 	fileInfoStr = r.FormValue("fileInfo")
-	if !this.IsPeer(r) {
+	clientIP := this.util.GetClientIp(r)
+	if !this.IsPeer(clientIP) {
 		log.Info("isn't peer fileInfo:", fileInfo)
 		return
 	}
 	if err = json.Unmarshal([]byte(fileInfoStr), &fileInfo); err != nil {
-		w.Write([]byte(this.GetClusterNotPermitMessage(r)))
+		w.Write([]byte(this.GetClusterNotPermitMessage(clientIP)))
 		log.Error(err)
 		return
 	}
@@ -711,8 +615,9 @@ func (this *Server) GetFileInfo(w http.ResponseWriter, r *http.Request) {
 	md5sum = r.FormValue("md5")
 	fpath = r.FormValue("path")
 	result.Status = "fail"
-	if !this.IsPeer(r) {
-		w.Write([]byte(this.GetClusterNotPermitMessage(r)))
+	clientIP := this.util.GetClientIp(r)
+	if !this.IsPeer(clientIP) {
+		w.Write([]byte(this.GetClusterNotPermitMessage(clientIP)))
 		return
 	}
 	md5sum = r.FormValue("md5")
@@ -749,8 +654,9 @@ func (this *Server) RemoveFile(w http.ResponseWriter, r *http.Request) {
 	fpath = r.FormValue("path")
 	inner = r.FormValue("inner")
 	result.Status = "fail"
-	if !this.IsPeer(r) {
-		w.Write([]byte(this.GetClusterNotPermitMessage(r)))
+	clientIP := this.util.GetClientIp(r)
+	if !this.IsPeer(clientIP) {
+		w.Write([]byte(this.GetClusterNotPermitMessage(clientIP)))
 		return
 	}
 	if this.confRepo.GetAuthUrl() != "" && !this.CheckAuth(w, r) {
@@ -880,20 +786,6 @@ func (this *Server) BuildFileResult(fileInfo *model.FileInfo, r *http.Request) m
 	fileResult.Scenes = fileInfo.Scene
 	return fileResult
 }
-func (this *Server) RegisterExit() {
-	c := make(chan os.Signal)
-	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-	go func() {
-		for s := range c {
-			switch s {
-			case syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT:
-				this.ldb.Close()
-				log.Info("Exit", s)
-				os.Exit(1)
-			}
-		}
-	}()
-}
 func (this *Server) AppendToQueue(fileInfo *model.FileInfo) {
 	for (len(this.queueToPeers) + constDefine.CONST_QUEUE_SIZE/10) > constDefine.CONST_QUEUE_SIZE {
 		time.Sleep(time.Millisecond * 50)
@@ -959,49 +851,6 @@ func (this *Server) ConsumerLog() {
 			this.saveFileMd5Log(fileLog.FileInfo, fileLog.FileName)
 		}
 	}()
-}
-func (this *Server) LoadSearchDict() {
-	go func() {
-		log.Info("Load search dict ....")
-		f, err := os.Open(this.confRepo.GetSearchFileName())
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		defer f.Close()
-		r := bufio.NewReader(f)
-		for {
-			line, isprefix, err := r.ReadLine()
-			for isprefix && err == nil {
-				kvs := strings.Split(string(line), "\t")
-				if len(kvs) == 2 {
-					this.searchMap.Put(kvs[0], kvs[1])
-				}
-			}
-		}
-		log.Info("finish load search dict")
-	}()
-}
-func (this *Server) SaveSearchDict() {
-	var (
-		err        error
-		fp         *os.File
-		searchDict map[string]interface{}
-		k          string
-		v          interface{}
-	)
-	this.lockMap.LockKey(this.confRepo.GetSearchFileName())
-	defer this.lockMap.UnLockKey(this.confRepo.GetSearchFileName())
-	searchDict = this.searchMap.Get()
-	fp, err = os.OpenFile(this.confRepo.GetSearchFileName(), os.O_RDWR, 0755)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	defer fp.Close()
-	for k, v = range searchDict {
-		fp.WriteString(fmt.Sprintf("%s\t%s", k, v.(string)))
-	}
 }
 func (this *Server) ConsumerPostToPeer() {
 	ConsumerFunc := func() {
@@ -1096,8 +945,9 @@ func (this *Server) RepairFileInfo(w http.ResponseWriter, r *http.Request) {
 	var (
 		result model.JsonResult
 	)
-	if !this.IsPeer(r) {
-		w.Write([]byte(this.GetClusterNotPermitMessage(r)))
+	clientIP := this.util.GetClientIp(r)
+	if !this.IsPeer(clientIP) {
+		w.Write([]byte(this.GetClusterNotPermitMessage(clientIP)))
 		return
 	}
 	if !this.confRepo.GetEnableMigrate() {
@@ -1109,81 +959,19 @@ func (this *Server) RepairFileInfo(w http.ResponseWriter, r *http.Request) {
 	go this.RepairFileInfoFromFile()
 	w.Write([]byte(this.util.JsonEncodePretty(result)))
 }
-func (this *Server) Reload(w http.ResponseWriter, r *http.Request) {
-	var (
-		err     error
-		data    []byte
-		cfg     configRepo.GloablConfig
-		action  string
-		cfgjson string
-		result  model.JsonResult
-	)
-	result.Status = "fail"
-	r.ParseForm()
-	if !this.IsPeer(r) {
-		w.Write([]byte(this.GetClusterNotPermitMessage(r)))
-		return
-	}
-	cfgjson = r.FormValue("cfg")
-	action = r.FormValue("action")
-	_ = cfgjson
-	if action == "get" {
-		result.Data = configRepo.GetSingleton()
-		result.Status = "ok"
-		w.Write([]byte(this.util.JsonEncodePretty(result)))
-		return
-	}
-	if action == "set" {
-		if cfgjson == "" {
-			result.Message = "(error)parameter cfg(json) require"
-			w.Write([]byte(this.util.JsonEncodePretty(result)))
-			return
-		}
-		if err = json.Unmarshal([]byte(cfgjson), &cfg); err != nil {
-			log.Error(err)
-			result.Message = err.Error()
-			w.Write([]byte(this.util.JsonEncodePretty(result)))
-			return
-		}
-		result.Status = "ok"
-		cfgjson = this.util.JsonEncodePretty(cfg)
-		this.util.WriteFile(this.confRepo.GetConfFileName(), cfgjson)
-		w.Write([]byte(this.util.JsonEncodePretty(result)))
-		return
-	}
-	if action == "reload" {
-		if data, err = ioutil.ReadFile(this.confRepo.GetConfFileName()); err != nil {
-			result.Message = err.Error()
-			w.Write([]byte(this.util.JsonEncodePretty(result)))
-			return
-		}
-		if err = json.Unmarshal(data, &cfg); err != nil {
-			result.Message = err.Error()
-			w.Write([]byte(this.util.JsonEncodePretty(result)))
-			return
-		}
-		configRepo.InitRepo(this.confRepo.GetConfFileName())
-		this.initComponent(true)
-		result.Status = "ok"
-		w.Write([]byte(this.util.JsonEncodePretty(result)))
-		return
-	}
-	if action == "" {
-		w.Write([]byte("(error)action support set(json) get reload"))
-	}
-}
 func (this *Server) RemoveEmptyDir(w http.ResponseWriter, r *http.Request) {
 	var (
 		result model.JsonResult
 	)
 	result.Status = "ok"
-	if this.IsPeer(r) {
+	clientIP := this.util.GetClientIp(r)
+	if this.IsPeer(clientIP) {
 		go this.util.RemoveEmptyDir(this.confRepo.GetDataDir())
 		go this.util.RemoveEmptyDir(this.confRepo.GetStoreDir())
 		result.Message = "clean job start ..,don't try again!!!"
 		w.Write([]byte(this.util.JsonEncodePretty(result)))
 	} else {
-		result.Message = this.GetClusterNotPermitMessage(r)
+		result.Message = this.GetClusterNotPermitMessage(clientIP)
 		w.Write([]byte(this.util.JsonEncodePretty(result)))
 	}
 }
@@ -1195,9 +983,10 @@ func (this *Server) ReceiveMd5s(w http.ResponseWriter, r *http.Request) {
 		fileInfo *model.FileInfo
 		md5s     []string
 	)
-	if !this.IsPeer(r) {
+	clientIP := this.util.GetClientIp(r)
+	if !this.IsPeer(clientIP) {
 		log.Warn(fmt.Sprintf("ReceiveMd5s %s", this.util.GetClientIp(r)))
-		w.Write([]byte(this.GetClusterNotPermitMessage(r)))
+		w.Write([]byte(this.GetClusterNotPermitMessage(clientIP)))
 		return
 	}
 	r.ParseForm()
@@ -1225,8 +1014,9 @@ func (this *Server) ListDir(w http.ResponseWriter, r *http.Request) {
 		filesResult []model.FileInfoResult
 		tmpDir      string
 	)
-	if !this.IsPeer(r) {
-		result.Message = this.GetClusterNotPermitMessage(r)
+	clientIP := this.util.GetClientIp(r)
+	if !this.IsPeer(clientIP) {
+		result.Message = this.GetClusterNotPermitMessage(clientIP)
 		w.Write([]byte(this.util.JsonEncodePretty(result)))
 		return
 	}
@@ -1271,8 +1061,9 @@ func (this *Server) Report(w http.ResponseWriter, r *http.Request) {
 	)
 	result.Status = "ok"
 	r.ParseForm()
-	if this.IsPeer(r) {
-		reportFileName = STATIC_DIR + "/report.html"
+	clientIP := this.util.GetClientIp(r)
+	if this.IsPeer(clientIP) {
+		reportFileName = this.confRepo.GetStaticDir() + "/report.html"
 		if this.util.IsExist(reportFileName) {
 			if data, err := this.util.ReadBinFile(reportFileName); err != nil {
 				log.Error(err)
@@ -1293,7 +1084,7 @@ func (this *Server) Report(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(fmt.Sprintf("%s is not found", reportFileName)))
 		}
 	} else {
-		w.Write([]byte(this.GetClusterNotPermitMessage(r)))
+		w.Write([]byte(this.GetClusterNotPermitMessage(clientIP)))
 	}
 }
 func (this *Server) Repair(w http.ResponseWriter, r *http.Request) {
@@ -1308,12 +1099,13 @@ func (this *Server) Repair(w http.ResponseWriter, r *http.Request) {
 	if force == "1" {
 		forceRepair = true
 	}
-	if this.IsPeer(r) {
+	clientIP := this.util.GetClientIp(r)
+	if this.IsPeer(clientIP) {
 		go this.AutoRepair(forceRepair)
 		result.Message = "repair job start..."
 		w.Write([]byte(this.util.JsonEncodePretty(result)))
 	} else {
-		result.Message = this.GetClusterNotPermitMessage(r)
+		result.Message = this.GetClusterNotPermitMessage(clientIP)
 		w.Write([]byte(this.util.JsonEncodePretty(result)))
 	}
 
@@ -1381,7 +1173,7 @@ func (this *Server) Index(w http.ResponseWriter, r *http.Request) {
 				</div>
 			  </body>
 			</html>`
-		uppyFileName := STATIC_DIR + "/uppy.html"
+		uppyFileName := this.confRepo.GetStaticDir() + "/uppy.html"
 		if this.util.IsExist(uppyFileName) {
 			if data, err := this.util.ReadBinFile(uppyFileName); err != nil {
 				log.Error(err)
@@ -1700,7 +1492,6 @@ func (this *Server) Start() {
 	http.HandleFunc(fmt.Sprintf("%s/list_dir", groupRoute), this.ListDir)
 	http.HandleFunc(fmt.Sprintf("%s/remove_empty_dir", groupRoute), this.RemoveEmptyDir)
 	http.HandleFunc(fmt.Sprintf("%s/repair_fileinfo", groupRoute), this.RepairFileInfo)
-	http.HandleFunc(fmt.Sprintf("%s/reload", groupRoute), this.Reload)
 	http.HandleFunc(fmt.Sprintf("%s/syncfile_info", groupRoute), this.SyncFileInfo)
 	http.HandleFunc(fmt.Sprintf("%s/get_md5s_by_date", groupRoute), this.GetMd5sForWeb)
 	http.HandleFunc(fmt.Sprintf("%s/receive_md5s", groupRoute), this.ReceiveMd5s)

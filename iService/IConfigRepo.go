@@ -47,7 +47,7 @@ type IConfigRepo interface {
 
 	GetDockerDir() string
 	GetStoreDir() string
-	GetConfDir() string
+	//GetConfDir() string
 	GetLogDir() string
 	GetDataDir() string
 	GetStaticDir() string
@@ -56,7 +56,7 @@ type IConfigRepo interface {
 	GetLevelDbFileName() string
 	GetLogLevelDbFileName() string
 	GetStatFileName() string
-	GetConfFileName() string
+	//GetConfFileName() string
 	GetServerCrtFileName() string
 	GetServerKeyFileName() string
 	GetSearchFileName() string

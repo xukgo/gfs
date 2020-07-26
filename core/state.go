@@ -96,8 +96,9 @@ func (this *Server) RepairStatWeb(w http.ResponseWriter, r *http.Request) {
 		date   string
 		inner  string
 	)
-	if !this.IsPeer(r) {
-		result.Message = this.GetClusterNotPermitMessage(r)
+	clientIP := this.util.GetClientIp(r)
+	if !this.IsPeer(clientIP) {
+		result.Message = this.GetClusterNotPermitMessage(clientIP)
 		w.Write([]byte(this.util.JsonEncodePretty(result)))
 		return
 	}
@@ -136,8 +137,9 @@ func (this *Server) Stat(w http.ResponseWriter, r *http.Request) {
 		barSize  []int64
 		dataMap  map[string]interface{}
 	)
-	if !this.IsPeer(r) {
-		result.Message = this.GetClusterNotPermitMessage(r)
+	clientIP := this.util.GetClientIp(r)
+	if !this.IsPeer(clientIP) {
+		result.Message = this.GetClusterNotPermitMessage(clientIP)
 		w.Write([]byte(this.util.JsonEncodePretty(result)))
 		return
 	}

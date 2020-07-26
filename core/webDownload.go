@@ -54,7 +54,7 @@ func (this *Server) Download(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("list dir deny"))
 			return
 		}
-		//staticHandler.ServeHTTP(w, r)
+		//staticFileServerHandler.ServeHTTP(w, r)
 		this.DownloadNormalFileByURI(w, r)
 		return
 	}
@@ -154,7 +154,7 @@ func (this *Server) DownloadNormalFileByURI(w http.ResponseWriter, r *http.Reque
 		this.ResizeImage(w, fullpath, uint(imgWidth), uint(imgHeight))
 		return true, nil
 	}
-	staticHandler.ServeHTTP(w, r)
+	staticFileServerHandler.ServeHTTP(w, r)
 	return true, nil
 }
 func (this *Server) DownloadNotFound(w http.ResponseWriter, r *http.Request) {
@@ -263,10 +263,11 @@ func (this *Server) CheckDownloadAuth(w http.ResponseWriter, r *http.Request) (b
 		}
 		return true
 	}
-	if this.confRepo.GetEnableDownloadAuth() && this.confRepo.GetAuthUrl() != "" && !this.IsPeer(r) && !this.CheckAuth(w, r) {
+	clientIP := this.util.GetClientIp(r)
+	if this.confRepo.GetEnableDownloadAuth() && this.confRepo.GetAuthUrl() != "" && !this.IsPeer(clientIP) && !this.CheckAuth(w, r) {
 		return false, errors.New("auth fail")
 	}
-	if this.confRepo.GetDownloadUseToken() && !this.IsPeer(r) {
+	if this.confRepo.GetDownloadUseToken() && !this.IsPeer(clientIP) {
 		token = r.FormValue("token")
 		timestamp = r.FormValue("timestamp")
 		if token == "" || timestamp == "" {

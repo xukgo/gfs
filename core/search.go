@@ -1,9 +1,12 @@
 package core
 
 import (
+	"bufio"
+	"fmt"
 	log "github.com/sjqzhang/seelog"
 	"github.com/xukgo/gfs/model"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -18,8 +21,9 @@ func (this *Server) Search(w http.ResponseWriter, r *http.Request) {
 		md5s      []string
 	)
 	kw = r.FormValue("kw")
-	if !this.IsPeer(r) {
-		result.Message = this.GetClusterNotPermitMessage(r)
+	clientIP := this.util.GetClientIp(r)
+	if !this.IsPeer(clientIP) {
+		result.Message = this.GetClusterNotPermitMessage(clientIP)
 		w.Write([]byte(this.util.JsonEncodePretty(result)))
 		return
 	}
@@ -64,4 +68,48 @@ func (this *Server) SearchDict(kw string) []model.FileInfo {
 		}
 	}
 	return fileInfos
+}
+
+func (this *Server) LoadSearchDict() {
+	go func() {
+		log.Info("Load search dict ....")
+		f, err := os.Open(this.confRepo.GetSearchFileName())
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		defer f.Close()
+		r := bufio.NewReader(f)
+		for {
+			line, isprefix, err := r.ReadLine()
+			for isprefix && err == nil {
+				kvs := strings.Split(string(line), "\t")
+				if len(kvs) == 2 {
+					this.searchMap.Put(kvs[0], kvs[1])
+				}
+			}
+		}
+		log.Info("finish load search dict")
+	}()
+}
+func (this *Server) SaveSearchDict() {
+	var (
+		err        error
+		fp         *os.File
+		searchDict map[string]interface{}
+		k          string
+		v          interface{}
+	)
+	this.lockMap.LockKey(this.confRepo.GetSearchFileName())
+	defer this.lockMap.UnLockKey(this.confRepo.GetSearchFileName())
+	searchDict = this.searchMap.Get()
+	fp, err = os.OpenFile(this.confRepo.GetSearchFileName(), os.O_RDWR, 0755)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	defer fp.Close()
+	for k, v = range searchDict {
+		fp.WriteString(fmt.Sprintf("%s\t%s", k, v.(string)))
+	}
 }

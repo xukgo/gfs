@@ -52,7 +52,8 @@ func (this *Server) BackUp(w http.ResponseWriter, r *http.Request) {
 	if date == "" {
 		date = this.util.GetToDay()
 	}
-	if this.IsPeer(r) {
+	clientIP := this.util.GetClientIp(r)
+	if this.IsPeer(clientIP) {
 		if inner != "1" {
 			for _, peer := range this.confRepo.GetPeers() {
 				backUp := func(peer string, date string) {
@@ -72,7 +73,7 @@ func (this *Server) BackUp(w http.ResponseWriter, r *http.Request) {
 		result.Message = "back job start..."
 		w.Write([]byte(this.util.JsonEncodePretty(result)))
 	} else {
-		result.Message = this.GetClusterNotPermitMessage(r)
+		result.Message = this.GetClusterNotPermitMessage(clientIP)
 		w.Write([]byte(this.util.JsonEncodePretty(result)))
 	}
 }

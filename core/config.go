@@ -2,9 +2,9 @@ package core
 
 //func InitConfig(supportGroupManage bool, group string) {
 //	if supportGroupManage {
-//		staticHandler = http.StripPrefix("/"+group+"/", http.FileServer(http.Dir(STORE_DIR)))
+//		staticFileServerHandler = http.StripPrefix("/"+group+"/", http.FileServer(http.Dir(STORE_DIR)))
 //	} else {
-//		staticHandler = http.StripPrefix("/", http.FileServer(http.Dir(STORE_DIR)))
+//		staticFileServerHandler = http.StripPrefix("/", http.FileServer(http.Dir(STORE_DIR)))
 //	}
 //	Singleton = NewServer()
 //	Singleton.initComponent(false)
