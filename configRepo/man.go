@@ -4,7 +4,6 @@ import (
 	"fmt"
 	log "github.com/sjqzhang/seelog"
 	"github.com/xukgo/gfs/constDefine"
-	"github.com/xukgo/gsaber/utils/randomUtil"
 	"io/ioutil"
 	"os"
 	"runtime"
@@ -27,19 +26,20 @@ func InitRepo(filePath string) error {
 	if err != nil {
 		return fmt.Errorf("ReadFile %s error", filePath)
 	}
-	repo := new(Repo)
-	err = repo.FillWithJson(contents)
+	xmlRoot := new(XmlRoot)
+	err = xmlRoot.FillWithXml(contents)
 	if err != nil {
-		return fmt.Errorf("configRepo unmarshal json error:%w", err)
+		return fmt.Errorf("configRepo unmarshal xml error:%w", err)
 	}
-	afterFillJson(repo)
+
+	repo := initParamRepo(xmlRoot)
 	locker.Lock()
 	singleton = repo
 	locker.Unlock()
 	return nil
 }
 
-func afterFillJson(repo *Repo) {
+func initParamRepo(root *XmlRoot) *Repo {
 	/*
 		if !Singleton.util.FileExists(CONF_FILE_NAME) {
 				var ip string
@@ -51,44 +51,39 @@ func afterFillJson(repo *Repo) {
 				Singleton.util.WriteFile(CONF_FILE_NAME, cfg)
 			}
 	*/
-	if repo.QueueSize == 0 {
-		repo.QueueSize = constDefine.CONST_QUEUE_SIZE
-	}
-	if repo.PeerId == "" {
-		repo.PeerId = fmt.Sprintf("%d", randomUtil.NewInt32(0, 9))
-	}
-	if repo.ReadTimeout == 0 {
-		repo.ReadTimeout = 60 * 10
-	}
-	if repo.WriteTimeout == 0 {
-		repo.WriteTimeout = 60 * 10
-	}
-	if repo.SyncWorker == 0 {
-		repo.SyncWorker = 200
-	}
-	if repo.UploadWorker == 0 {
-		repo.UploadWorker = runtime.NumCPU() + 4
-		if runtime.NumCPU() < 4 {
-			repo.UploadWorker = 8
-		}
-	}
-	if repo.UploadQueueSize == 0 {
-		repo.UploadQueueSize = 200
-	}
-	if repo.RetryCount == 0 {
-		repo.RetryCount = 3
-	}
-	if repo.SyncDelay == 0 {
-		repo.SyncDelay = 60
-	}
-	if repo.WatchChanSize == 0 {
-		repo.WatchChanSize = 100000
-	}
+	repo := new(Repo)
+	repo.Addr = fmt.Sprintf(":%d", root.Port)
+	repo.Host = fmt.Sprintf("http://%s:%d", root.IP, root.Port)
+	repo.PeerId = fmt.Sprintf("%d", root.NodeId)
+	repo.Peers = root.Peers
 
-	if repo.Host == "" {
-		//todo 自动生成局域网内到http url
-		repo.Host = "http://ip:" + repo.Addr
+	repo.ShowDir = root.ShowDir
+	repo.EnableHttps = false
+	repo.SupportGroupManage = false
+	repo.EnableWebUpload = true
+	repo.RefreshInterval = 1800
+	repo.EnableCustomPath = true
+	repo.AutoRepair = true
+	repo.FileSumArithmetic = "md5"
+	repo.AdminIps = []string{"127.0.0.1"}
+	repo.EnableDistinctFile = true
+	repo.EnableCrossOrigin = true
+	repo.EnableDownloadAuth = true
+	repo.EnableTus = true
+	repo.SyncTimeout = 0
+
+	repo.QueueSize = constDefine.CONST_QUEUE_SIZE
+	repo.ReadTimeout = 60 * 10
+	repo.WriteTimeout = 60 * 10
+	repo.SyncWorker = 200
+	repo.UploadWorker = runtime.NumCPU() + 4
+	if runtime.NumCPU() < 4 {
+		repo.UploadWorker = 8
 	}
+	repo.UploadQueueSize = 200
+	repo.RetryCount = 3
+	repo.SyncDelay = 60
+	repo.WatchChanSize = 100000
 
 	repo.DockerDir = os.Getenv("GFS_DIR")
 	if repo.DockerDir != "" {
@@ -129,4 +124,5 @@ func afterFillJson(repo *Repo) {
 	} else {
 		log.Error(err.Error())
 	}
+	return repo
 }

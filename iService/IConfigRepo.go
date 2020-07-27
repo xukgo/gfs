@@ -33,7 +33,7 @@ type IConfigRepo interface {
 	GetDefaultDownload() bool
 	GetEnableTus() bool
 	GetSyncTimeout() int64
-	GetConnectTimeout() bool
+	//GetConnectTimeout() bool
 	GetReadTimeout() int
 	GetWriteTimeout() int
 	GetIdleTimeout() int

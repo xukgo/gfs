@@ -34,7 +34,6 @@ type Repo struct {
 	DefaultDownload      bool     `json:"default_download"`
 	EnableTus            bool     `json:"enable_tus"`
 	SyncTimeout          int64    `json:"sync_timeout"`
-	ConnectTimeout       bool     `json:"connect_timeout"`
 	ReadTimeout          int      `json:"read_timeout"`
 	WriteTimeout         int      `json:"write_timeout"`
 	IdleTimeout          int      `json:"idle_timeout"`
@@ -127,6 +126,7 @@ func (this *Repo) GetAutoRepair() bool {
 func (this *Repo) GetHost() string {
 	return this.Host
 }
+
 func (this *Repo) GetFileSumArithmetic() string {
 	return this.FileSumArithmetic
 }
@@ -165,9 +165,6 @@ func (this *Repo) GetEnableTus() bool {
 }
 func (this *Repo) GetSyncTimeout() int64 {
 	return this.SyncTimeout
-}
-func (this *Repo) GetConnectTimeout() bool {
-	return this.ConnectTimeout
 }
 func (this *Repo) GetReadTimeout() int {
 	return this.ReadTimeout

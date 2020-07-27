@@ -7,7 +7,7 @@ import (
 )
 
 func Start() error {
-	configUrl := fileUtil.GetAbsUrl("conf/cfg.json")
+	configUrl := fileUtil.GetAbsUrl("conf/cfg.xml")
 	err := configRepo.InitRepo(configUrl)
 	if err != nil {
 		return err
